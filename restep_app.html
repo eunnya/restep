@@ -1,0 +1,3236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#f7f3e9">
+<title>Re:Step</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f5f1e7; --paper:#fffdf8; --paper2:#fbf9f3; --ink:#263128; --muted:#7c827a;
+  --line:#e5dfd3; --green:#63a96d; --green-d:#397a48; --green-bg:#edf7e9;
+  --lav:#8270bd; --lav-bg:#f1edfb; --rose:#dc7283; --rose-bg:#fff0f3;
+  --amber:#b7781d; --amber-bg:#fff3dd; --blue:#4d86b8; --blue-bg:#edf6ff;
+  --danger:#c85757; --danger-bg:#fff0ee; --shadow:0 12px 34px rgba(61,73,57,.08);
+  --radius:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+font-family:Inter,Pretendard,"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+body{min-height:100vh}
+.app{width:min(430px,100%);margin:0 auto;min-height:100vh;background:var(--paper);position:relative;box-shadow:0 0 0 1px rgba(0,0,0,.02)}
+.screen{display:none;min-height:100vh;padding:20px 18px 28px}
+.screen.active{display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+.hdr{position:relative;height:44px;display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px}
+#homeScreen .hdr{margin-bottom:28px} /* 메인 화면만: 로고와 역할 전환 탭 사이 여유(+14). 목차 화면 header는 기존 간격 유지 */
+.hdr-logo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;pointer-events:none}
+.hdr-logo img{height:32px;width:auto;display:block;object-fit:contain}
+.hdr-right{display:flex;gap:0;position:relative;z-index:1;margin-right:-6px}
+/* 헤더 아이콘: 기본은 배경·테두리·그림자 없이 아이콘만(보이는 크기 약 22px), 클릭 영역은 36px. 누를 때만 아주 옅은 lavender */
+.hdr-btn{width:36px;height:36px;border:0;background:transparent;padding:0;border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;transition:background .12s ease,opacity .12s ease}
+.hdr-btn + .hdr-btn{margin-left:-2px}
+.hdr-btn img{width:24px;height:24px;display:block}
+.hdr-btn:hover{background:rgba(130,112,189,.08)}
+.hdr-btn:active{background:var(--lav-bg);opacity:.85}
+.hdr-btn .badge{top:1px;right:1px}
+.brand{font-size:28px;font-weight:950;letter-spacing:-.045em;color:#347a45}
+.brand.cheer{color:#6d58aa}
+.subtle{font-size:12px;color:var(--muted);line-height:1.55}
+.home-sub{font-size:13px;color:#5f6b5c;line-height:1.5}
+h1,h2,h3,h4,p{margin-top:0}
+h1{font-size:38px;letter-spacing:-.05em}
+h2{font-size:22px;letter-spacing:-.035em}
+h3{font-size:17px;letter-spacing:-.025em}
+.iconbtn{width:40px;height:40px;border:0;border-radius:13px;background:#f1eee7;color:var(--ink);font-weight:900;position:relative}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card.compact{padding:11px 13px;border-radius:17px;box-shadow:0 4px 14px rgba(61,73,57,.05)}
+.card.record{padding:10px 12px;border-radius:16px;margin-bottom:8px}
+.card.record b{font-size:13.5px}
+.card.record p{font-size:12.5px;margin:5px 0 0}
+.card.record .subtle{font-size:10.5px;margin-top:4px;line-height:1.4}
+.stat-split{display:flex;gap:8px;margin-bottom:14px}
+.stat-chip{flex:1;border-radius:16px;padding:11px 13px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
+.stat-chip.green{background:var(--green-bg);color:var(--green-d)}
+.stat-chip.lav{background:var(--lav-bg);color:#6d58a8}
+.stat-chip .stat-num{font-size:20px;font-weight:900;line-height:1.15}
+.stat-chip .stat-label{font-size:10.5px;font-weight:800;opacity:.8}
+.recap-link{display:block;width:100%;background:transparent;border:0;padding:6px 4px 0;font-size:12px;font-weight:800;text-align:center;cursor:pointer}
+.recap-link.green{color:var(--green-d)}
+.recap-link.lav{color:#6d58a8}
+.card.green{background:linear-gradient(145deg,#f8fcf5,#eef7e8)}
+.card.lav{background:linear-gradient(145deg,#fcfbff,#f1edfb)}
+.card.rose{background:linear-gradient(145deg,#fffafd,#fff1f4)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.stack{display:grid;gap:10px}
+.btn{border:0;border-radius:15px;padding:13px 15px;font-weight:850}
+.btn.primary{background:var(--green);color:#fff}
+.btn.purple{background:var(--lav);color:#fff}
+.btn.green{background:var(--green);color:#fff}
+.btn.secondary{background:#f2efe8;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost{background:transparent;border:1px dashed #b7d6bd;color:#477853}
+.btn.save{background:var(--green-bg);color:var(--green-d);border:1px solid var(--green);font-weight:900}
+.btn.danger{background:var(--danger-bg);color:var(--danger)}
+.btn.full{width:100%}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+input:disabled,textarea:disabled{background:#f1efe9;color:var(--muted);cursor:not-allowed;border-color:var(--line)}
+.smallbtn{border:0;border-radius:10px;padding:9px 13px;background:#f0eee8;font-size:11.5px;font-weight:850;color:var(--ink)}
+.smallbtn:disabled{opacity:.35;cursor:not-allowed}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:850;background:var(--green-bg);color:var(--green-d)}
+.pill.lav{background:var(--lav-bg);color:#6b58a3}
+.pill.rose{background:var(--rose-bg);color:#b95065}
+.pill.amber{background:var(--amber-bg);color:#98631b}
+.pill.gray{background:#f0eee9;color:#777}
+.mini-status{font-size:11px;font-weight:850;padding:7px 11px;border-radius:999px;display:inline-block}
+.mini-status.ok{background:var(--green-bg);color:var(--green-d)}
+.mini-status.warn{background:var(--amber-bg);color:#98631b}
+.login{padding-top:62px;text-align:center}
+.login .brand{font-size:44px}
+.login .sprout{font-size:62px;margin:26px 0}
+.mode{display:flex;gap:4px;padding:4px;border-radius:999px;background:#f1eee8}
+.mode button{border:0;background:transparent;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:850;color:var(--muted);flex:1;text-align:center}
+.mode button.active{background:#fff;color:var(--green-d);box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:22px 0 10px}
+.section-head h3{margin:0}
+.empty{text-align:center;padding:25px 16px}
+.empty .emoji{font-size:42px;margin-bottom:12px}
+.input-group{margin-bottom:11px}
+label{display:block;font-size:12px;font-weight:850;margin-bottom:6px}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:13px;background:#fbfaf6;color:var(--ink);padding:12px 13px;outline:none}
+textarea{resize:vertical}
+input:focus,textarea:focus{border-color:#89b391;box-shadow:0 0 0 3px rgba(99,169,109,.12)}
+.page-card{cursor:pointer}
+.page-card h3{margin-bottom:4px}
+.daytext{font-size:12px;font-weight:900;color:#516154}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);background:#f1eee8;border-radius:999px;padding:4px;margin-bottom:18px}
+.tabs button{border:0;background:transparent;border-radius:999px;padding:8px;font-weight:850;color:#6d706b}
+.tabs button.active{background:#79ad7c;color:#fff}
+.review{border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:10px;background:#fff;cursor:pointer}
+.review.done{background:#f4faf2;border-color:#b6d4ba}
+.locked-dim{filter:grayscale(.6);opacity:.55;pointer-events:none;transition:opacity .3s ease}
+.review-title{font-weight:950;font-size:16px}
+.review-items{font-size:12px;color:#626861;line-height:1.65;margin-top:7px}
+.review-items .memo{color:#92968f}
+.check{font-size:22px}
+.session-panel{background:#f8f6f0;border:1px solid var(--line);border-radius:18px;padding:14px}
+.draft{padding:12px 0;border-top:1px solid var(--line)}
+.draft:first-child{border-top:0}
+.notice{border-radius:17px;padding:13px;font-size:12px;line-height:1.55;margin-bottom:13px}
+.notice.lock{background:var(--lav-bg);border:1px solid #d8cfee;color:#5e4c90}
+.notice.danger{background:var(--danger-bg);border:1px solid #f0c9c5;color:#a34848}
+.notice.offline{background:var(--amber-bg);border:1px solid #ebd1a6;color:#7d5925}
+.notice.readonly{background:var(--blue-bg);border:1px solid #c9def0;color:#37688e}
+.record{background:#fff;border:1px solid var(--line);border-radius:17px;padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:background .12s ease}
+.record:active{background:#faf8f3}
+.status-card{cursor:pointer;transition:background .12s ease}
+.status-card:active{background:#faf8f3}
+/* 파트너 Re:Step 상세 — 수첩 인덱스형 가로 스와이프 */
+.rs-tabs{display:flex;gap:3px;align-items:flex-end;margin-top:16px;position:relative;z-index:1;margin-bottom:-1px}
+.rs-tabs button{flex:1;border:1px solid var(--line);border-bottom:0;border-radius:13px 13px 0 0;background:#faf8f3;color:var(--muted);font-size:13px;font-weight:600;padding:9px 0;transition:background .2s ease,color .2s ease,padding .2s ease}
+.rs-tabs button.active{background:var(--lav-bg);color:#4b3b86;font-weight:700;padding-top:12px}
+.rs-card{background:#fff;border:1px solid var(--line);border-radius:0 0 18px 18px;overflow:hidden}
+.rs-viewport{display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;transition:height .2s ease;cursor:grab}
+.rs-viewport::-webkit-scrollbar{display:none}
+.rs-viewport.dragging{cursor:grabbing;user-select:none}
+.rs-page{flex:0 0 100%;min-width:0;box-sizing:border-box;scroll-snap-align:start;padding:14px 16px 12px}
+.rs-h{font-size:15px;font-weight:800;margin-bottom:4px}
+.rs-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.rs-n{flex:0 0 32px;width:32px;height:32px;border-radius:50%;background:#efeaf9;color:#4b3b86;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.rs-b{min-width:0;flex:1}
+.rs-list>.rs-row:first-child{border-top:0}
+.rs-t{font-size:14px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.rs-s{font-size:12px;color:var(--muted);margin-top:3px}
+.rs-fold{display:inline-block;margin-top:4px;padding:6px 0 2px;font-size:12px;font-weight:600;color:#6d58a8;cursor:pointer}
+.rs-dots{display:flex;justify-content:center;gap:6px;margin:10px 0 18px}
+.rs-dots span{width:6px;height:6px;border-radius:50%;background:#dcd6ea;transition:background .2s ease}
+.rs-dots span.on{background:var(--lav)}
+/* 월간 "보낸 Re:Cheer" 기록 카드 — 색면 없는 white paper 행, 작은 chevron으로만 클릭 가능함을 암시 */
+.cl-card{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e8e3f0;border-radius:14px;padding:10px 14px;margin-bottom:8px;cursor:pointer;transition:background .12s ease}
+.cl-card:active{background:#faf8fd}
+.cl-b{min-width:0;flex:1}
+.cl-t{font-size:13.5px;font-weight:700;color:var(--ink)}
+.cl-m{font-size:13px;font-weight:500;color:#3f4a42;margin-top:3px;overflow-wrap:anywhere}
+.cl-d{font-size:11px;color:#8a8498;margin-top:4px}
+.cl-c{flex-shrink:0;font-size:18px;line-height:1;color:#b4aecb}
+/* 월간 기록 인덱스(받은 Re:Step / 보낸 Re:Cheer) — 목록과 이어진 파일철 탭. green/lavender는 활성 때 아주 옅게만. */
+.mi-tabs{display:flex;gap:3px;align-items:flex-end;position:relative;z-index:1;margin-bottom:-1px}
+.mi-tab{flex:1;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:#faf8f3;color:var(--muted);padding:7px 0 8px;display:flex;flex-direction:column;align-items:center;gap:1px;transition:background .2s ease,color .2s ease,padding .2s ease}
+.mi-tab .l{font-size:10.5px;font-weight:600}
+.mi-tab .n{font-size:17px;font-weight:800;line-height:1.2}
+.mi-tab.active{padding-top:10px}
+.mi-tab.green.active{background:#f0f7ec;color:#2f6b3d}
+.mi-tab.lav.active{background:var(--lav-bg);color:#4b3b86}
+.mi-body{background:#fcfbf7;border:1px solid var(--line);border-radius:0 0 16px 16px;padding:10px 10px 2px}
+@keyframes miFade{from{opacity:0}to{opacity:1}}
+.mi-fade{animation:miFade .18s ease}
+/* 학습 탭: 복습 | 새 학습 서브탭, 저장된 새 학습 행, 상단 학습취소/마감하기 */
+/* 복습 | 새 학습: 탭(index)과 콘텐츠를 하나의 패널로. 선택된 탭이 패널 윗선을 덮어 끊김 없이 이어짐 */
+.sa-tabs{display:flex;gap:4px;align-items:flex-end;margin:16px 0 0;position:relative;z-index:1}
+.sa-tabs button{flex:1;border:1px solid #dfe8d8;border-bottom:0;border-radius:13px 13px 0 0;background:#faf8f3;color:var(--muted);font-size:13px;font-weight:600;padding:9px 0;transition:background .2s ease,color .2s ease}
+.sa-tabs button.active{background:#e6f1de;color:#2f6a3d;font-weight:800;padding-top:11px;padding-bottom:10px;margin-bottom:-1px;border-color:#cfe3c3}
+.sa-panel{background:#fcfbf6;border:1px solid #dfe8d8;border-radius:0 0 16px 16px;overflow:hidden}
+.sa-panel .rs-page{padding:16px 14px 18px}
+.rs-viewport.noswipe{overflow-x:hidden;cursor:auto} /* 학습자 화면의 복습|새 학습은 스와이프 없이 탭 누름으로만 이동(입력 중 손가락이 흔들려 넘어가는 일 방지) */
+.sa-dots span.on{background:#7fb487}
+.sa-panel .review:last-child{margin-bottom:0}
+.sa-panel .dr-row:first-child{margin-top:0}
+.sa-btn{min-width:66px;font-size:12px;font-weight:700;padding:7px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:#5f665d}
+.sa-btn.close{color:var(--green-d);border-color:#c9e3cb}
+.sa-btn:disabled{background:#f4f1ea;border-color:transparent;color:#b3ae9f;cursor:not-allowed}
+.dr-row{display:flex;align-items:center;gap:10px;background:#fffefb;border:1px solid #e9e2d3;border-radius:14px;padding:10px 12px;margin-top:8px}
+.dr-row.editing{border-color:#bfe0c4;background:#fafdf9}
+.dr-n{flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:var(--green-bg);color:var(--green-d);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.dr-b{min-width:0;flex:1}
+.dr-t{font-size:14px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.dr-s{font-size:12px;color:var(--muted);margin-top:2px}
+.dr-a{display:flex;gap:12px;flex-shrink:0}
+.dr-edit{font-size:12px;font-weight:800;color:var(--green-d);cursor:pointer}
+.dr-del{font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
+.dr-edit.off,.dr-del.off{opacity:.4;cursor:default}
+.dr-form{background:#fffefb;border:1px solid #e9e2d3;border-radius:14px;padding:14px;margin-top:12px}
+/* 학습자 홈: 두 개의 독립 section surface */
+.home-sec{border-radius:22px;padding:16px}
+.home-sec.learn{background:#e8f3e0;border:1px solid #d3e6c9}
+.home-sec.restep{background:#f3f0f9;border:1px solid #e3ddf0;padding:14px;margin-top:22px}
+.pg-card{display:flex;align-items:center;gap:12px;background:#fffefb;border:1px solid #e6e1ef;border-radius:18px;padding:13px 14px;margin-bottom:10px;cursor:pointer}
+.pg-card:active{background:#faf8fd}
+.pg-ico{width:44px;height:44px;flex-shrink:0;object-fit:contain}
+.pg-b{flex:1;min-width:0}
+.pg-card h3{margin:0 0 3px;font-size:16px;color:#2d2640;overflow-wrap:anywhere}
+.pg-sub{font-size:12.5px;color:#8b84a3}
+.pg-chev{flex-shrink:0;width:18px;height:18px}
+/* 목차(영역) 화면: 소개 영역 + 조용한 관리 + 하단 생성 버튼 */
+.hdr-back{position:absolute;left:-6px;top:4px;z-index:1}
+.ar-intro{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:6px 0 20px}
+.ar-title{margin:0;padding-left:12px;font-size:22px;font-weight:800;color:#2d2640;min-width:0} /* 카드 안쪽 시작선(아이콘)에 가깝게: 화면 가장자리에서 30px */
+.ar-deco-box{width:88px;height:76px;flex-shrink:0;margin-right:12px;transform:translateY(-4px);display:flex;align-items:center;justify-content:center} /* 제목 중앙보다 살짝 위. 좌(제목)·우(장식) 모두 카드 가장자리에서 12px 안쪽 */
+.ar-deco{max-width:100%;max-height:100%;object-fit:contain;pointer-events:none}
+.ar-actions{display:flex;gap:10px;margin-top:22px}
+.ar-btn{height:48px;border-radius:16px;font-size:14px;font-weight:800;cursor:pointer;border:1px solid transparent;font-family:inherit}
+.ar-btn.sec{flex:35 1 0;background:#fffefb;border-color:#dcdfd6;color:#556057} /* 보조 버튼은 중립(크림·회색 테두리) — 보라/초록 어느 쪽도 주색이 되지 않게 */
+.ar-btn.pri{flex:65 1 0;background:#e3f0da;border-color:#cfe3c3;color:#2f6a3d} /* 색 역할: 초록=학습자가 직접 하는 행동, 보라=구조/브랜드 */
+.ar-btn.sec:active{background:#f4f6f0}
+.ar-btn.pri:active{background:#d3e6c8}
+.ar-btn:disabled{opacity:.45;cursor:default}
+/* 새 페이지 만들기 대화상자: 화면 중앙, 약한 dim, X 없음 */
+.adlg{display:none;position:fixed;z-index:70;top:0;bottom:0;left:50%;transform:translateX(-50%);width:min(430px,100%);background:rgba(45,38,64,.14);align-items:center;justify-content:center}
+.adlg.show{display:flex}
+.adlg-box{width:88%;background:#fffefb;border:1px solid #e6e1ef;border-radius:22px;padding:22px 18px 18px;box-shadow:0 6px 24px rgba(45,38,64,.08)}
+.adlg-box h3{margin:0 0 16px;font-size:17px;color:#2d2640}
+.adlg-box label{display:block;font-size:13px;font-weight:700;color:#6f6889;margin-bottom:6px}
+.adlg-box input{border:1px solid #dfe6d8;background:#fcfdf9}
+.adlg-box input:focus{border-color:#82b48b;box-shadow:0 0 0 3px #e8f3e0;outline:none}
+.adlg-btns{display:flex;gap:10px;margin-top:18px}
+.adlg-btns .ar-btn{height:44px}
+.adlg-btns .ar-btn.sec,.adlg-btns .ar-btn.pri{flex:1 1 0}
+.adlg-btns .ar-btn.sec{border-color:#dcdfd6;color:#556057}
+.adlg-btns .ar-btn.sec:active{background:#f4f6f0}
+.adlg-btns .ar-btn.pri{background:#bcd9ae;border-color:#bcd9ae;color:#1f4f2b}
+.adlg-btns .ar-btn.pri:active{background:#a9cc9a}
+.adlg-btns .ar-btn.pri:disabled{background:#eaeee6;border-color:#eaeee6;color:#a3ab9f;opacity:1}
+/* Re:Step 메인 = 플래너 표지 */
+.cover{text-align:center;padding:2px 0 4px}
+.cover-img img{width:min(300px,80%);height:auto;display:block;margin:0 auto}
+.cover-title{margin:6px 0 28px;font-size:19px;font-weight:800;letter-spacing:-.01em}
+.pl-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#fffefb;border:1px solid #e6e1ef;border-radius:18px;padding:14px 16px;margin-bottom:10px;cursor:pointer;font:inherit;color:inherit}
+.pl-card:active{background:#faf8fd}
+.pl-ico{width:46px;height:46px;flex-shrink:0}
+.pl-b{flex:1;min-width:0}
+.pl-b h3{margin:0 0 3px;font-size:16px}
+.pl-b p{margin:0;font-size:12.5px;color:var(--muted)}
+.pl-c{flex-shrink:0;font-size:20px;line-height:1;color:#b4aecb}
+.pg-card.mg{cursor:default;gap:8px}
+.pg-card.mg.dragging{opacity:.85;box-shadow:0 6px 18px rgba(76,33,83,.16)}
+.mg-h{flex-shrink:0;width:28px;text-align:center;font-size:18px;line-height:1;color:#a49cbd;cursor:grab;touch-action:none;user-select:none;padding:6px 0}
+.mg-name{flex:1;min-width:0;padding:9px 11px;font-size:14px;border-radius:11px}
+.mg-del{flex-shrink:0;border:0;background:transparent;color:var(--danger);font-size:12.5px;font-weight:800;padding:6px 4px}
+/* 자기주도 STEP */
+.stabs{display:grid;grid-template-columns:repeat(2,1fr);background:#f1eee8;border-radius:999px;padding:4px;margin-bottom:18px}
+.stabs button{border:0;background:transparent;border-radius:999px;padding:8px;font-weight:850;color:#6d706b}
+.stabs button.active{background:#79ad7c;color:#fff}
+.fld{margin-top:14px}
+.fld label .opt{font-weight:600;color:var(--muted);margin-left:4px;font-size:11px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{border:1px solid var(--line);background:#fffefb;border-radius:13px;padding:11px 8px;font-weight:800;font-size:13.5px;color:#6d706b}
+.seg button.on{background:var(--green-bg);border-color:var(--green);color:var(--green-d)}
+.txt-act{font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;padding:4px 2px;flex-shrink:0}
+.txt-danger{font-size:12.5px;font-weight:800;color:var(--danger);cursor:pointer;padding:6px 4px}
+.kv{padding:11px 0;border-top:1px solid var(--line)}
+.kv:first-child{border-top:0;padding-top:2px}
+.kv .k{font-size:11.5px;font-weight:800;color:var(--muted);margin-bottom:3px}
+.kv .v{font-size:15px;font-weight:700;overflow-wrap:anywhere;white-space:pre-wrap}
+.cl-ico{width:26px;height:26px;flex-shrink:0}
+.sd-act{background:#fff;border:1px solid #e3ddf0;border-radius:18px;padding:6px 14px;margin-bottom:22px}
+.home-add{background:transparent;border:0;padding:6px 2px 2px;font-size:12.5px;font-weight:700;color:#5f8a63;cursor:pointer}
+.conn-meta{font-size:11.5px;color:#7d8a7f}
+.rc-card{background:#fffefb;border:1px solid #e6e0f0;border-radius:12px;padding:9px 12px;margin-top:6px}
+.rc-t{font-size:13px;font-weight:700;color:var(--ink)}
+.rc-m{font-size:13px;font-weight:500;color:#3f4a42;margin-top:2px;overflow-wrap:anywhere}
+.rc-m.sub{font-size:11.5px;font-weight:400;color:var(--muted)}
+.rc-d{font-size:11px;color:#8a8498;margin-top:3px}
+/* 공통 상세 UI shell(.sd): 학습자 기록 상세(.sage) / 파트너 Re:Step 상세(.lav)가 같은 구조를 쓰고 색만 다르다. */
+.sd-sum{border:1px solid #e3ddf0;background:#faf8fe;border-radius:16px;padding:14px 16px}
+.sd-sum h2{margin:0 0 2px}
+.sd-date{font-size:12px;color:var(--muted);margin-bottom:8px}
+.sd-sum .row{font-size:13.5px}
+.sd.sage .sd-sum{background:#f4f9ef;border-color:#d9e8d0}
+.sd.sage .rs-tabs button.active{background:var(--green-bg);color:var(--green-d)}
+.sd.sage .rs-card{border-color:#d9e8d0}
+.sd.sage .rs-row{border-top-color:#e4eddc}
+.sd.sage .rs-n{background:var(--green-bg);color:var(--green-d)}
+.sd.sage .rs-dots span.on{background:#7fb487}
+.sd.sage .rs-fold{color:var(--green-d)}
+.sd.sage .sd-act{border-color:#d9e8d0}
+.sd.lav .rs-card{border-color:#e3ddf0}
+.rs-bt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
+.rs-meta{display:flex;align-items:baseline;gap:8px;margin-top:5px}
+.rs-meta .k{flex:0 0 38px;font-size:11.5px;font-weight:600;color:#858a82}
+.rs-meta .v{font-size:13px;font-weight:500;line-height:1.5;color:#1f2a22;min-width:0;overflow-wrap:anywhere}
+.cheer-note{background:#f3effb;border:1px solid #e3ddf0;border-radius:14px;padding:12px 14px}
+.cheer-note .t{font-size:14px;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.cheer-note .d{font-size:11px;color:#8a8498;margin-top:6px}
+/* Re:Cheer 메인(받은편지함) + 달력 기록 */
+.cs-stage{height:150px;display:flex;align-items:flex-end;justify-content:center;margin-top:4px}
+.cs-stage img{width:min(260px,78%);height:auto;max-height:100%;object-fit:contain}
+.cs-status{text-align:center;font-size:17px;font-weight:800;color:#4b3b86;margin:8px 0 14px;min-height:24px}
+/* Re:Cheer 미연결 메인 */
+.cs-stage.wait{height:auto;margin-top:26px}
+.cs-stage.wait img{width:min(300px,86%);max-height:none}
+.cs-status.soft{font-size:16px;font-weight:600;color:#6a5aa0;margin:10px 0 4px}
+.cs-sub{text-align:center;font-size:13px;color:#9089a8;margin:0 0 22px}
+.cw-card{background:linear-gradient(145deg,#fcfbff,#f1edfb);border:1px solid #e3ddf0;border-radius:22px;padding:18px 16px 16px;margin:0 2px}
+.cw-head{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.cw-ico{width:40px;height:40px;flex:none;display:block}
+.cw-title{font-size:16.5px;font-weight:700;color:#4b3b86}
+.cw-desc{font-size:12.5px;color:#8a82a3;line-height:1.45;margin-top:2px;word-break:keep-all}
+.cw-input{height:48px;border:1px solid #ddd5f0;border-radius:14px;background:#fff;padding:0 14px;font-size:14.5px}
+.cw-input::placeholder{color:#aaa3c0}
+.cw-input:focus{border-color:#a597d4;box-shadow:0 0 0 3px rgba(130,112,189,.15)}
+.cw-btn{display:block;width:100%;height:50px;margin-top:10px;border:0;border-radius:15px;background:#8270bd;color:#fff;font-size:15.5px;font-weight:800;font-family:inherit;cursor:pointer}
+.cw-btn:active{background:#6f5eaa}
+.cs-hint{text-align:center;font-size:12px;color:#9a93ad;line-height:1.55;margin:0 10px}
+/* Re:Cheer 메인: 빈 상태 점선 영역(= 카드가 들어올 자리) + 카드 왼쪽 날짜칩 */
+.cs-slot{border:1.5px dashed #ddd8e8;border-radius:14px;background:transparent;padding:20px 12px;min-height:72px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:clamp(10.5px,3.2vw,12.5px);line-height:1.6;color:#9a93ad;word-break:keep-all}
+.cs-conn{text-align:center;font-size:12px;color:#a8a2ba;margin-top:10px}
+.cl-card.chip{gap:12px}
+.cl-one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-chip{flex-shrink:0;min-width:42px;padding:6px 8px;border-radius:11px;background:var(--lav-bg);color:#6d58a8;text-align:center;line-height:1.25}
+.cl-chip .m{display:block;font-size:10.5px;font-weight:600;opacity:.8}
+.cl-chip .d{display:block;font-size:14px;font-weight:800}
+.cc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:#fffefb;border:1px solid #e3ddf0;border-radius:16px;padding:10px 8px}
+.cc-dow{text-align:center;font-size:11px;font-weight:600;color:#9a93ad;padding:2px 0 6px}
+.cc-cell{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}
+.cc-day{width:100%;height:100%;max-width:40px;border:0;background:transparent;border-radius:50%;font-size:13px;font-weight:500;color:#9a9588;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0;position:relative}
+.cc-day.has{color:var(--ink);font-weight:700;cursor:pointer}
+.cc-day.today span{box-shadow:inset 0 -2px 0 #cfc6e8}
+.cc-day.sel{background:var(--lav-bg);color:#4b3b86}
+.cc-day{cursor:pointer}
+.cc-dot{display:block;width:5px;height:5px;border-radius:50%;background:var(--lav)}
+
+.nt-card{display:flex;align-items:center;gap:12px;background:#faf8fe;border:1px solid #e3ddf0;border-radius:16px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.nt-card:active{background:#f3effb}
+.nt-ico{width:40px;height:40px;flex-shrink:0;object-fit:contain}
+.nt-b{flex:1;min-width:0}
+.nt-t{font-size:15px;font-weight:800;color:#2d2640}
+.nt-s{font-size:13px;color:#6f6889;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nt-chev{flex-shrink:0;width:18px;height:18px}
+.nt-close{display:block;width:100%;margin-top:14px;height:46px;border-radius:15px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid #ebe6da;background:#f2efe8;color:#45433d}
+.nt-close:active{background:#e8e4d9}
+/* 연결 관계 관리 / 알림 요청 카드 공통 */
+.cx-card{border:1px solid #d6e6cc;background:#edf7e9;border-radius:18px;padding:15px;margin-bottom:12px}
+.cx-card.lav{background:#f1edfb;border-color:#e3ddf0}
+.cx-head{display:flex;align-items:center;gap:13px}
+.cx-ico{width:48px;height:48px;flex:none;display:block}
+.cx-b{flex:1;min-width:0}
+.cx-h{font-size:16.5px;font-weight:600;color:var(--ink);line-height:1.3}
+.cx-s{font-size:13.5px;font-weight:400;color:#6b7a6e;line-height:1.5;margin-top:4px}
+.cx-card.lav .cx-s{color:#7a7197}
+.cx-act{display:flex;gap:8px;margin-top:13px}
+.cx-btn{height:36px;padding:0 16px;border-radius:12px;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;border:1px solid transparent;white-space:nowrap}
+.cx-act .cx-btn{flex:1}
+.cx-btn.sec{background:#fffdf8;border-color:#dcd6c8;color:#45433d}
+.cx-btn.sec:active{background:#f2efe8}
+.cx-btn.pri{background:#5b9a68;border-color:#5b9a68;color:#fff}
+.cx-btn.pri:active{background:#4d8859}
+.cx-code{display:flex;gap:8px;margin-top:13px}
+.cx-code-v{flex:1;min-width:0;height:44px;display:flex;align-items:center;justify-content:center;background:#fffdf8;border:1px solid #d6e6cc;border-radius:12px;font-size:19px;font-weight:900;letter-spacing:.06em;color:#2f4a35}
+.cx-code .cx-btn{height:44px;background:#e3f0da;border-color:#cfe3c3;color:#2f6a3d}
+.cx-code .cx-btn:active{background:#d3e6c8}
+.cx-rel{display:flex;align-items:center;gap:13px}
+.cx-lab{font-size:12.5px;font-weight:500;color:#6b7a6e}
+.cx-card.lav .cx-lab{color:#7d7790}
+.cx-name{font-size:15.5px;font-weight:500;color:var(--ink);margin-top:3px;word-break:break-all}
+.cx-mutual{display:flex;align-items:center;gap:13px;background:#fffdf8;border:1px solid var(--line);border-radius:18px;padding:14px 15px;margin-bottom:6px}
+.cx-heart{width:46px;height:auto;flex:none;display:block}
+.cx-sec{font-size:12px;font-weight:800;color:#8a8576;margin:14px 2px 7px}
+.rec-x{flex-shrink:0;margin:-4px -6px 0 0;padding:2px 8px;font-size:17px;line-height:1.2;color:#b9b3a4;cursor:pointer}
+
+
+
+
+
+
+
+.summary-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:13px 14px;margin-bottom:10px;box-shadow:0 4px 14px rgba(61,73,57,.05)}
+.summary-card.new-item{border-left:4px solid #f6ccd6}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat{border:1px solid var(--line);background:#fff;border-radius:17px;padding:12px;text-align:center}
+.stat strong{display:block;font-size:21px;margin-top:5px}
+.stage-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.stage{font-size:10.5px;font-weight:850;padding:8px 4px;border-radius:10px;background:#f1efea;color:#777;text-align:center;line-height:1.3}
+.stage.done{color:#3d7a48}
+.help-list{display:grid;gap:10px}
+.help-item{background:#faf8f3;border:1px solid var(--line);border-radius:16px;padding:13px}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.quick button{border:1px solid var(--line);background:#fff;border-radius:14px;height:46px;padding:0 8px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25;overflow:hidden;font-size:13px;font-weight:500;color:var(--muted)}
+.quick button.selected{background:var(--lav-bg);border-color:#a899d3;color:#6d58a8}
+.badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:999px;background:#dd6f7c;color:#fff;font-size:9px;font-weight:950;display:none;align-items:center;justify-content:center;padding:0 3px}
+.modal{display:none;position:fixed;z-index:60;top:0;bottom:0;left:50%;transform:translateX(-50%);width:min(430px,100%);background:rgba(32,37,32,.3);align-items:flex-end;justify-content:center}
+.modal.show{display:flex}
+.sheet{width:min(430px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:27px 27px 0 0;padding:20px 18px 30px;
+scrollbar-width:thin;scrollbar-color:#d6d1c4 transparent}
+.sheet::-webkit-scrollbar{width:8px}
+.sheet::-webkit-scrollbar-track{background:transparent;margin:32px 4px}
+.sheet::-webkit-scrollbar-thumb{background-color:#d6d1c4;border-radius:999px;border:2px solid #fff;background-clip:padding-box}
+.sheet::-webkit-scrollbar-thumb:hover{background-color:#b7b2a3}
+.sheet h3{font-size:20px}
+.manage-row{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.toast{position:fixed;z-index:100;top:18px;left:50%;transform:translate(-50%,-13px);opacity:0;pointer-events:none;
+background:#26372b;color:#fff;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:850;transition:.18s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+@media(min-width:700px){ body{padding:22px 0} .app{border-radius:28px;overflow:hidden;min-height:calc(100vh - 44px)} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <section id="loginScreen" class="screen active">
+    <div class="login">
+      <div class="brand">Re:Step</div>
+      <p class="subtle">공부한 만큼,<br>다시 한 걸음.</p>
+      <div class="sprout">🌱</div>
+      <input id="email" type="email" placeholder="이메일 주소">
+      <button id="sendBtn" class="btn primary full">매직링크 보내기</button>
+      <p id="loginMsg" class="subtle" style="margin-top:13px"></p>
+    </div>
+  </section>
+
+  <section id="pushPromptScreen" class="screen">
+    <div class="login">
+      <div class="sprout">🔔</div>
+      <h2>짝꿍이 Re:Step/Re:Cheer를<br>보내면 바로 알려드릴게요</h2>
+      <button id="pushPromptAllow" class="btn primary full" style="margin-top:24px">알림 받기</button>
+      <button id="pushPromptLater" class="btn secondary full" style="margin-top:8px">나중에</button>
+    </div>
+  </section>
+
+  <section id="nameSetupScreen" class="screen">
+    <div class="login">
+      <div class="sprout">🌱</div>
+      <h2>당신을 뭐라고<br>부르면 좋을까요?</h2>
+      <p class="subtle">응원 파트너에게 이 이름으로 보여요.</p>
+      <input id="displayNameInput" placeholder="이름 또는 별명" style="margin-top:16px">
+      <button id="saveNameBtn" class="btn primary full" style="margin-top:10px">저장하고 시작하기</button>
+    </div>
+  </section>
+
+  <section id="homeScreen" class="screen">
+    <!-- 공통 header: 좌측 navigation(홈은 없음) / 중앙 로고 이미지 / 우측 action. 로고는 header 전체 폭 기준 정확히 가운데(absolute)라 아이콘 개수와 무관 -->
+    <div class="hdr">
+      <div class="hdr-logo"><img id="logoStep" src="restep_logo.png" alt="Re:Step"><img id="logoCheer" src="recheer_logo.png" alt="Re:Cheer" style="display:none"></div>
+      <div class="hdr-right">
+        <button id="notifBtn" class="hdr-btn" aria-label="알림" title="알림"><img src="icon_bell.png" alt=""><span id="notifBadge" class="badge"></span></button>
+        <button id="calBtn" class="hdr-btn" style="display:none" aria-label="Re:Cheer 기록" title="Re:Cheer 기록"><img src="icon_calendar.png" alt=""></button>
+        <button id="settingsBtn" class="hdr-btn" aria-label="설정" title="설정"><img src="icon_settings.png" alt=""></button>
+      </div>
+    </div>
+    <div class="mode">
+      <button data-role="learner" class="active">학습자</button>
+      <button data-role="partner">응원 파트너</button>
+    </div>
+
+    <div id="learnerHome" style="margin-top:16px">
+      <!-- 스터디 플래너의 표지: 어떤 종류의 학습을 할지 고른다(두 영역은 동등). 과거 기록/현황은 여기 두지 않음 -->
+      <div class="cover">
+        <div class="cover-img"><img src="restep_study_anim.webp" alt=""></div>
+        <h2 class="cover-title">오늘은 어떤 학습을 할까요?</h2>
+        <button class="pl-card" data-area="study"><img class="pl-ico" src="icon_book.png" alt=""><div class="pl-b"><h3>전공 / 교과 학습</h3><p>STUDY로 학습하고 복습해요.</p></div><span class="pl-c">›</span></button>
+        <button class="pl-card" data-area="self"><img class="pl-ico" src="icon_sprout.png" alt=""><div class="pl-b"><h3>자기주도 학습</h3><p>STEP으로 나만의 활동을 기록해요.</p></div><span class="pl-c">›</span></button>
+      </div>
+    </div>
+
+    <div id="partnerHome" style="display:none;margin-top:16px">
+      <div id="partnerBody"></div>
+    </div>
+  </section>
+
+  <section id="areaScreen" class="screen">
+    <!-- 공통 header: 좌측 뒤로가기 / 중앙 Re:Step 로고(정중앙) / 우측 알림·설정. 알림·설정은 홈 header 버튼과 같은 동작을 그대로 연결 -->
+    <div class="hdr">
+      <button id="areaBackBtn" class="hdr-btn hdr-back" aria-label="뒤로"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4c2153" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="hdr-logo"><img src="restep_logo.png" alt="Re:Step"></div>
+      <div class="hdr-right">
+        <button id="areaNotifBtn" class="hdr-btn" aria-label="알림" title="알림"><img src="icon_bell.png" alt=""><span id="areaNotifBadge" class="badge"></span></button>
+        <button id="areaSettingsBtn" class="hdr-btn" aria-label="설정" title="설정"><img src="icon_settings.png" alt=""></button>
+      </div>
+    </div>
+    <!-- 플래너 목차: 전공/교과와 자기주도가 같은 화면·같은 컴포넌트(아이콘·단위·문구만 다름). 큰 색 패널로 감싸지 않음 -->
+    <div class="ar-intro">
+      <h2 id="areaTitle" class="ar-title"></h2>
+      <div class="ar-deco-box"><img id="areaDeco" class="ar-deco" alt=""></div>
+    </div>
+    <div id="areaList"></div>
+    <!-- 하단 action: 리스트 바로 아래(고정 아님). 관리 35% secondary / 만들기 65% primary -->
+    <div class="ar-actions">
+      <button id="areaManageBtn" class="ar-btn sec">관리</button>
+      <button id="areaAddBtn" class="ar-btn pri"></button>
+    </div>
+  </section>
+
+  <section id="stepScreen" class="screen">
+    <div class="topbar">
+      <button id="stepBackBtn" class="iconbtn">←</button>
+      <div style="text-align:center"><h2 id="stepPageTitle" style="margin:0"></h2></div>
+      <div style="width:40px"></div>
+    </div>
+    <div class="stabs"><button data-stab="step" class="active">STEP</button><button data-stab="records">기록</button></div>
+    <div id="stepTab"></div>
+    <div id="stepRecordsTab" style="display:none"></div>
+  </section>
+
+  <section id="closeStepScreen" class="screen">
+    <div class="topbar">
+      <button id="closeStepBackBtn" class="iconbtn">←</button>
+      <div style="width:40px"></div>
+    </div>
+    <div id="closeStepBody"></div>
+  </section>
+
+  <section id="pageScreen" class="screen">
+    <div class="topbar">
+      <button id="backHomeBtn" class="iconbtn">←</button>
+      <div style="text-align:center"><h2 id="pageTitle" style="margin:0"></h2></div>
+      <div style="width:40px"></div>
+    </div>
+    <div class="tabs">
+      <button data-tab="today" class="active">학습</button>
+      <button data-tab="records">기록</button>
+      <button data-tab="status">복습현황</button>
+    </div>
+    <div id="todayTab"></div>
+    <div id="recordsTab" style="display:none"></div>
+    <div id="statusTab" style="display:none"></div>
+  </section>
+
+  <section id="cheerRecordScreen" class="screen">
+    <div class="topbar">
+      <button id="cheerRecordBackBtn" class="iconbtn">←</button>
+      <h2 style="margin:0">Re:Cheer 기록</h2><div style="width:40px"></div>
+    </div>
+    <div id="cheerRecordBody"></div>
+  </section>
+
+  <section id="summaryScreen" class="screen">
+    <div class="topbar">
+      <button id="summaryBackBtn" class="iconbtn">←</button>
+      <h2 style="margin:0">Re:Step</h2><div style="width:40px"></div>
+    </div>
+    <div id="summaryDetail"></div>
+  </section>
+
+  <section id="studyDetailScreen" class="screen">
+    <div class="topbar">
+      <button id="studyDetailBackBtn" class="iconbtn">←</button>
+      <div style="width:40px"></div>
+    </div>
+    <div id="studyDetailBody"></div>
+  </section>
+
+  <section id="closeStudyScreen" class="screen">
+    <div class="topbar">
+      <button id="closeStudyBackBtn" class="iconbtn">←</button>
+      <div style="width:40px"></div>
+    </div>
+    <div id="closeStudyBody"></div>
+  </section>
+
+  <div id="areaDlg" class="adlg" aria-hidden="true">
+    <div class="adlg-box" role="dialog" aria-modal="true" aria-labelledby="areaDlgTitle">
+      <h3 id="areaDlgTitle"></h3>
+      <label id="areaDlgLabel" for="areaNewName"></label>
+      <input id="areaNewName" maxlength="40" autocomplete="off">
+      <div class="adlg-btns"><button id="areaCancelBtn" class="ar-btn sec">취소</button><button id="areaSaveBtn" class="ar-btn pri" disabled>만들기</button></div>
+    </div>
+  </div>
+  <div id="modal" class="modal"><div id="sheet" class="sheet"></div></div>
+  <div id="toast" class="toast"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://guhdtlgsplbszmkvhuyk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_JZXCrdrVymKN-DqE1AdiOQ_yBP-JsAU';
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STAGE_NAMES = ['1차복습','2차복습','3차복습','장기복습1','장기복습2'];
+const STAGE_COLORS = ['#eaf7e6','#dcf0d5','#c9e8bd','#b3dea3','#9dd48a'];
+const DEVICE_ID_KEY = 'restep-device-id';
+const deviceId = localStorage.getItem(DEVICE_ID_KEY) || ('DEV-'+Math.random().toString(36).slice(2,8).toUpperCase());
+localStorage.setItem(DEVICE_ID_KEY, deviceId);
+
+const $ = id => document.getElementById(id);
+let currentRole = 'learner';
+let currentUserId = null;
+let pagesCache = [];
+let editingDraftIndex = null; // 지금 수정 중인 draft의 인덱스. 없으면 null(=추가 모드)
+// 학습 탭 화면 상태(전부 클라이언트 상태 — DB 변경 없음). 탭 이동/다시 그리기에도 입력 중인 값이 유지된다.
+let studySubTab = 'review';   // 'review' | 'new'
+let draftFormOpen = false;    // "＋ 새 학습 추가" 폼이 펼쳐져 있는지
+let draftFormValues = { title:'', from:'', to:'', memo:'' };
+const emptyDraftValues = () => ({ title:'', from:'', to:'', memo:'' });
+function captureDraftForm(){ // 다시 그리기 직전에 입력 중인 값을 보관
+  const t = $('newTitle'); if(!t) return;
+  draftFormValues = { title:t.value, from:$('newFrom').value, to:$('newTo').value, memo:$('newMemo').value };
+}
+function resetStudyUiState(){ editingDraftIndex = null; studySubTab = 'review'; draftFormOpen = false; draftFormValues = emptyDraftValues(); }
+let currentPageId = null;
+let activeSummaryId = null;
+let realtimeChannel = null;
+let isOffline = !navigator.onLine;
+const localReadOnlyPages = new Set();
+
+function cleanUrl(){ return window.location.origin + window.location.pathname; }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function screen(id){
+  if(id !== 'areaScreen') closeAreaDlg(); // 다른 화면으로 가면 새 페이지 대화상자/스크롤 잠금 해제
+  if(!DETAIL_SCREENS.includes(id)) leaveDetailSilently(); // 상세에서 다른 화면으로 "정상 이동"하면 그 상세의 history 항목은 조용히 정리
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
+}
+// ===== 상세 화면의 "뒤로가기" — 진입한 경로를 되짚기 =====
+// 상세(Re:Step 상세/STUDY 상세)는 부모가 고정돼 있지 않고, 연 쪽이 넘긴 back 함수(진입 경로)로 돌아간다.
+// 상단 ←와 브라우저/기기 뒤로가기는 같은 history 항목을 쓰도록: 상세에 들어갈 때 history 항목 하나를 쌓고,
+// ←는 history.back()을 부르며, popstate에서 저장해둔 back 함수를 실행한다. (경로는 DB에 저장하지 않는 일시 상태)
+const DETAIL_SCREENS = ['summaryScreen','studyDetailScreen','cheerRecordScreen'];
+let detailNav = null;        // { fn }  — 현재 상세의 back 함수
+let ignoreNextPop = false;
+function enterDetailNav(backFn){
+  if(detailNav){ detailNav.fn = backFn; return; } // 이미 상세 안(새로고침/재렌더): back 함수만 갱신
+  detailNav = { fn: backFn };
+  history.pushState({ restepDetail: true }, '');
+}
+function leaveDetailSilently(){
+  if(!detailNav) return;
+  detailNav = null; ignoreNextPop = true; history.back();
+}
+function goBackFromDetail(fallback){
+  if(detailNav) history.back(); else if(fallback) fallback();
+}
+window.addEventListener('popstate', () => {
+  if(ignoreNextPop){ ignoreNextPop = false; return; }
+  if(detailNav){ const fn = detailNav.fn; detailNav = null; if(fn) fn(); }
+});
+function toast(t){ $('toast').textContent=t; $('toast').classList.add('show'); setTimeout(()=>$('toast').classList.remove('show'),1700); }
+function showModal(html){ $('sheet').style.background=''; $('sheet').innerHTML=html; $('modal').classList.add('show'); modalDirtyGuard = null; }
+function closeModal(){ $('modal').classList.remove('show'); modalDirtyGuard = null; }
+let modalDirtyGuard = null; // 설정돼있으면 배경 클릭 시 바로 안 닫고 이 함수가 대신 처리함(미저장 변경 확인용)
+$('modal').addEventListener('click', e=>{ if(e.target===$('modal')){ if(modalDirtyGuard) modalDirtyGuard(); else closeModal(); } });
+function formatPageRange(from,to){
+  if(from&&to) return `p.${escapeHtml(from)}~${escapeHtml(to)}`;
+  if(from) return `p.${escapeHtml(from)}`;
+  if(to) return `p.${escapeHtml(to)}`;
+  return '';
+}
+
+// ===== 오프라인 감지 =====
+function renderCurrentView(){
+  const active = document.querySelector('.screen.active');
+  if(!active) return;
+  if(active.id === 'homeScreen' || active.id === 'areaScreen'){ loadPages(); }
+  if(active.id === 'stepScreen' && stepPage){ renderStepTab(); }
+  if(active.id === 'pageScreen' && currentPageId){
+    const page = pagesCache.find(p=>p.id===currentPageId);
+    if(page) renderToday(page);
+  }
+}
+window.addEventListener('online', () => { isOffline = false; toast('다시 온라인 상태예요.'); renderCurrentView(); });
+window.addEventListener('offline', () => { isOffline = true; toast('오프라인 상태예요. 마지막 저장 기록만 볼 수 있어요.'); renderCurrentView(); });
+
+// ===== 로그인 =====
+$('sendBtn').onclick = async () => {
+  const email = $('email').value.trim();
+  if(!email){ $('loginMsg').textContent = '이메일을 입력해주세요.'; return; }
+  $('sendBtn').disabled = true;
+  $('loginMsg').textContent = '전송 중...';
+  const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: cleanUrl() } });
+  $('sendBtn').disabled = false;
+  if(error){ $('loginMsg').textContent = '❌ ' + error.message; return; }
+  $('loginMsg').textContent = '📩 로그인 링크를 보냈어요. 메일함(스팸함도!)을 확인해주세요.';
+};
+
+// ===== 역할 토글 =====
+document.querySelectorAll('[data-role]').forEach(b => b.onclick = () => setRole(b.dataset.role));
+function setRole(role){
+  currentRole = role;
+  document.querySelectorAll('[data-role]').forEach(b=>b.classList.toggle('active', b.dataset.role===role));
+  // 역할을 바꾸면 로고 이미지만 바뀐다(두 이미지는 같은 높이·같은 기준선으로 맞춰져 있어 header 높이·위치가 안 움직임)
+  $('logoStep').style.display = role==='partner' ? 'none' : '';
+  $('logoCheer').style.display = role==='partner' ? '' : 'none';
+  $('learnerHome').style.display = role==='learner' ? 'block' : 'none';
+  $('partnerHome').style.display = role==='partner' ? 'block' : 'none';
+  // 응원 파트너 화면: 새 Re:Step은 메인(받은편지함)에 있고 앱 밖 푸시도 그대로 오므로 🔔은 없애고 그 자리에 달력(= 내가 보낸 Re:Cheer 기록).
+  $('notifBtn').style.display = role==='partner' ? 'none' : '';
+  $('calBtn').style.display = role==='partner' ? '' : 'none';
+  if(role==='partner' && !window.__cheerGifsWarm){ window.__cheerGifsWarm = true; [CS_GIF_EMPTY, CS_GIF_ARRIVED].forEach(u => { new Image().src = u; }); } // 애니메이션 파일 미리 받아둠
+  hideNotifBadge(); // 역할이 바뀌는 순간 이전 숫자가 남아 보이지 않게 먼저 비우고
+  if(currentUserId) updateNotifBadge(); // 알림 배지는 지금 보는 역할의 알림만 센다
+}
+// 받은 Re:Cheer 상세 — 알림(기기 Push/앱 내 🔔) 클릭 시 학습자가 바로 내용을 확인하는 모달.
+// 연결 해제로 숨겨진 메시지면(getVisibleCheerMessage 기준) 🔒 상태로, 아예 못 찾으면 홈으로 fallback.
+async function openLearnerCheerDetail(summaryId){
+  setRole('learner');
+  screen('homeScreen');
+  const { data: s, error } = await client.from('cheer_summaries').select('*, cheer_messages(*)').eq('id', summaryId).eq('learner_user_id', currentUserId).single();
+  if(error || !s){
+    toast('이 Re:Cheer는 더 이상 확인할 수 없어요.');
+    return;
+  }
+  const link = await getMyConnectedLink();
+  const label = sumLabel(s);
+  const state = learnerItemState(s, link);
+  const bodyHtml = state.type === 'visible'
+    ? `<p style="margin:8px 0 0">"${escapeHtml(state.msg.message)}"</p><div class="subtle" style="margin-top:8px">${new Date(state.msg.created_at).toLocaleString('ko-KR')}</div>`
+    : state.type === 'locked'
+      ? `<p class="subtle" style="margin:8px 0 0">🔒 이전 연결에서 받은 Re:Cheer</p>`
+      : `<p class="subtle" style="margin:8px 0 0">⏳ 아직 응원이 도착하지 않았어요.</p>`;
+  showModal(`<h3>${label}</h3><div class="card rose" style="margin-top:12px"><b>💌 받은 Re:Cheer</b>${bodyHtml}</div><button id="closeCheerDetail" class="btn secondary full" style="margin-top:14px">닫기</button>`);
+  $('closeCheerDetail').onclick = closeModal;
+}
+// 새 Re:Cheer 알림: 일반 STUDY의 Re:Step이면 그 STUDY의 "기록 상세 → 받은 Re:Cheer"로, 복습-only 세션이면(STUDY가 없어
+// 기록에 안 생김) Re:Step snapshot 상세(읽기 전용)로 이동. STUDY 번호가 아니라 세션 id로 STUDY를 찾는다.
+async function openLearnerCheerTarget(summaryId, ctx){
+  // 뒤로가기: 알림함/작업 중 화면 등 호출부가 넘긴 경로가 우선, 없으면(앱이 꺼져 있다가 푸시로 진입) 학습자 홈.
+  const back = (ctx && ctx.onBack) || (() => { setRole('learner'); screen('homeScreen'); loadPages(); });
+  const { data: s } = await client.from('cheer_summaries').select('id, session_id, study_day_number_snapshot').eq('id', summaryId).eq('learner_user_id', currentUserId).maybeSingle();
+  if(!s){ toast('이 Re:Cheer는 더 이상 확인할 수 없어요.'); return false; }
+  if(s.study_day_number_snapshot){
+    const { data: sess } = await client.from('study_sessions').select('page_id, step_number').eq('id', s.session_id).maybeSingle();
+    if(sess){
+      const { data: day } = await client.from('study_days').select('*, study_day_items(*)').eq('page_id', sess.page_id).eq('created_step', sess.step_number).maybeSingle();
+      const { data: pg } = await client.from('study_pages').select('*').eq('id', sess.page_id).maybeSingle();
+      if(day && pg){
+        await renderStudyDayDetail(day, pg, back, null, null, true);
+        return true;
+      }
+    }
+  }
+  // 복습-only 세션이거나 원본 STUDY가 삭제된 경우: 발송 당시 Re:Step 발송본(읽기 전용) — 학습자도 같은 발송본을 읽는다
+  return await openSummary(summaryId, { learnerView: true, onBack: back });
+}
+// 알림 클릭 라우터 — 기기 Push(URL 파라미터로 들어옴)와 앱 내 🔔 알림 카드 클릭이 전부 이 함수
+// 하나만 거쳐가도록 통일함. 타입별 이동 로직을 두 군데서 따로 만들지 않기 위함.
+async function handleNotificationTarget(target, ctx){
+  if(!target || !target.type) return;
+  if(target.type === 'restep'){
+    setRole('partner');
+    // 뒤로가기 기본값(ctx 없음 = 푸시로 앱을 처음 연 경우): 응원 파트너 홈
+    const ok = await openSummary(target.summary_id, { onBack: (ctx && ctx.onBack) || (() => { setRole('partner'); screen('homeScreen'); loadCheerSection(); }) });
+    if(ok === true) markNotifRead('step:' + target.summary_id); // 상세가 실제로 열렸을 때만 그 알림만 읽음 처리
+  } else if(target.type === 're_cheer'){
+    setRole('learner');
+    const ok = await openLearnerCheerTarget(target.summary_id, ctx);
+    if(ok === true) markNotifRead('cheer:' + target.summary_id);
+  } else if(target.type === 'disconnected'){
+    await openConnectionSettings({ linkId: target.link_id, role: target.role });
+  } else if(target.type === 'notif'){
+    setRole('learner');
+    $('notifBtn').click();
+  } else if(target.type === 'monthly_recap'){
+    await openPreviousMonthRecap(); // 알림 모달 안 거치고 바로 지난달 리포트로
+  }
+}
+// 앱이 이미 열려 있을 때 푸시를 누르면(sw.js가 postMessage로 알려줌) 지금 보던 화면·입력 상태를 그대로 두고 상세만 열고,
+// 뒤로가기 하면 원래 화면으로 복원한다. screen()은 DOM을 지우지 않고 보이기/숨기기만 하므로 draft 입력·체크 상태가 유지됨.
+function captureViewState(){
+  const active = document.querySelector('.screen.active');
+  return {
+    screenId: active ? active.id : 'homeScreen', role: currentRole, scrollY: window.scrollY,
+    modalOpen: $('modal').classList.contains('show'),
+    prevDetailBack: DETAIL_SCREENS.includes(active && active.id) && detailNav ? detailNav.fn : null
+  };
+}
+function restoreViewState(st){
+  if(st.prevDetailBack){ st.prevDetailBack(); return; } // 보던 게 다른 상세였다면 그 상세의 원래 뒤로가기 경로로
+  setRole(st.role); // 푸시 상세(파트너)를 보는 동안 바뀐 역할도 원래대로(학습자 작업 화면에 파트너 로고/아이콘이 남지 않게)
+  screen(st.screenId);
+  if(st.modalOpen) $('modal').classList.add('show');
+  setTimeout(() => window.scrollTo(0, st.scrollY), 30);
+}
+function handlePushWhileActive(url){
+  let params; try{ params = new URL(url, location.href).searchParams; }catch(e){ return; }
+  const type = params.get('open'); if(!type) return;
+  const target = { type, summary_id: params.get('summary_id'), link_id: params.get('link_id'), role: params.get('role') };
+  const st = captureViewState();
+  if(st.modalOpen) $('modal').classList.remove('show'); // 열려 있던 모달은 내용을 지우지 않고 가렸다가 돌아올 때 다시 보여줌
+  handleNotificationTarget(target, { onBack: () => restoreViewState(st) });
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', e => {
+    if(e.data && e.data.type === 'restep-notif-click' && e.data.url) handlePushWhileActive(e.data.url);
+  });
+}
+// 기기 알림을 눌러서 들어왔을 때 URL(?open=타입&...)에서 대상 정보를 꺼내 라우터에 그대로 넘김.
+// sw.js의 notificationclick이 알림 종류에 맞는 url로 이 파일을 열거나 이동시키면 여기서 받음.
+// ===== 작업 화면 상태의 보존/복원 (푸시로 앱이 다시 시작돼도 하던 일로 돌아가기 위함) =====
+// 판단 기준은 "앱이 foreground였나"가 아니라 "복원할 작업 화면 상태가 남아 있나". 학습 페이지(작성/복습 중 화면)에 있는 동안
+// 서브탭·폼 펼침·입력 중이던 값·스크롤을 주기적으로 localStorage에 적어두고, 푸시 진입 후 뒤로가기 때 거기로 복원한다.
+// (진행 중인 세션, 복습 체크, 저장된 새 학습은 원래 서버에 있어서 그대로 유지됨.) 오래된 상태(2시간 초과)는 쓰지 않고,
+// 홈으로 나가면 지운다. 경로 정보는 DB에 저장하지 않는다.
+const WORK_STATE_KEY = 'restep-work-state';
+const WORK_STATE_TTL = 2 * 60 * 60 * 1000;
+function saveWorkState(){
+  try{
+    if(!currentUserId || !currentPageId) return;
+    const active = document.querySelector('.screen.active');
+    if(!active || active.id !== 'pageScreen') return; // 상세 등으로 나가 있는 동안엔 마지막으로 저장한 작업 상태를 유지
+    captureDraftForm();
+    const tabBtn = document.querySelector('.tabs button.active');
+    localStorage.setItem(WORK_STATE_KEY, JSON.stringify({
+      ts: Date.now(), uid: currentUserId, pageId: currentPageId, tab: tabBtn ? tabBtn.dataset.tab : 'today',
+      sub: studySubTab, formOpen: draftFormOpen, form: draftFormValues, editing: editingDraftIndex, scrollY: window.scrollY
+    }));
+  }catch(e){}
+}
+function readWorkState(){
+  try{
+    const st = JSON.parse(localStorage.getItem(WORK_STATE_KEY) || 'null');
+    if(!st || st.uid !== currentUserId || Date.now() - st.ts > WORK_STATE_TTL) return null;
+    return st;
+  }catch(e){ return null; }
+}
+function clearWorkState(){ try{ localStorage.removeItem(WORK_STATE_KEY); }catch(e){} }
+async function restoreWorkState(st){
+  clearWorkState();
+  setRole('learner');
+  if(!pagesCache.some(p=>p.id===st.pageId)) await loadPages();
+  if(!pagesCache.some(p=>p.id===st.pageId)){ screen('homeScreen'); return; } // 그 사이 페이지가 없어졌다면 홈
+  await openPage(st.pageId, st);
+  if(st.tab && st.tab !== 'today'){ const b = document.querySelector(`.tabs button[data-tab="${st.tab}"]`); if(b) b.click(); }
+  setTimeout(() => window.scrollTo(0, st.scrollY || 0), 450);
+}
+setInterval(saveWorkState, 2000);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') saveWorkState(); });
+window.addEventListener('pagehide', saveWorkState);
+
+function handleNotificationDeepLink(){
+  const params = new URLSearchParams(location.search);
+  const type = params.get('open');
+  if(!type) return;
+  const target = { type, summary_id: params.get('summary_id'), link_id: params.get('link_id'), role: params.get('role') };
+  history.replaceState(null, '', location.pathname); // 새로고침해도 같은 동작 반복 안 되도록 정리
+  // 뒤로가기 목적지 우선순위: ① 복원할 작업 화면 상태가 있으면 그곳 → (없으면) ② 알림 종류에 맞는 홈(핸들러의 기본값)
+  const saved = readWorkState();
+  handleNotificationTarget(target, saved ? { onBack: () => restoreWorkState(saved) } : undefined);
+}
+
+// ===== 플래너: 표지 → 목차(전공/교과 · 자기주도) → 페이지 =====
+// 두 영역은 같은 화면(areaScreen)과 같은 코드를 쓰고 아이콘·단위·문구만 다르다. 전공/교과는 기존 study_pages/STUDY 로직 그대로.
+// 자기주도 페이지는 study_pages.kind='self'로 구분한다(컬럼이 아직 없으면 전공/교과만 동작).
+const AREAS = {
+  study: { form:'새 학습 페이지 만들기', label:'학습 페이지 이름', ex:'예: 전공', title:'전공 / 교과 학습', card:'icon_book_small.png',   deco:'side_books.png',   unit:'STUDY', add:'＋ 학습 페이지 만들기', ph:'학습 페이지 이름 (예: 전공)', made:'학습 페이지를 만들었어요.' },
+  self:  { form:'새 활동 페이지 만들기', label:'활동 페이지 이름', ex:'예: 러닝', title:'자기주도 학습',   card:'icon_sprout_small.png', deco:'side_fitness.png', unit:'STEP',  add:'＋ 활동 페이지 만들기', ph:'활동 페이지 이름 (예: 러닝)', made:'활동 페이지를 만들었어요.' }
+};
+let currentArea = 'study';
+let areaManage = false;
+let selfPagesCache = [];
+let kindColumnOk = true; // study_pages.kind 컬럼 존재 여부(조회 결과로 판단)
+let activePageIdsCache = new Set();
+let selfStepInfo = {}; // pageId -> { active:진행 중 STEP 번호|null, lastClosed:마감한 마지막 STEP 번호 }
+let areaNameDraft = {};
+const areaList = () => currentArea === 'self' ? selfPagesCache : pagesCache;
+
+async function loadPages(){
+  const { data, error } = await client.from('study_pages').select('*').order('position', {ascending:true});
+  if(error){ toast('❌ ' + error.message); return; }
+  if(data.length) kindColumnOk = ('kind' in data[0]);
+  pagesCache = data.filter(p => (p.kind || 'study') === 'study');
+  selfPagesCache = data.filter(p => p.kind === 'self');
+  const { data: activeSessions } = await client.from('study_sessions').select('page_id').eq('status','active');
+  activePageIdsCache = new Set((activeSessions||[]).map(s=>s.page_id));
+  selfStepInfo = {};
+  if(selfPagesCache.length){ // 자기주도 STEP 요약(테이블이 아직 없으면 조용히 건너뜀)
+    const { data: steps, error: stErr } = await client.from('self_steps').select('page_id, step_number, status');
+    if(!stErr) (steps||[]).forEach(t => {
+      const o = selfStepInfo[t.page_id] = selfStepInfo[t.page_id] || { active:null, lastClosed:0 };
+      if(t.status === 'active') o.active = t.step_number; else o.lastClosed = Math.max(o.lastClosed, t.step_number);
+    });
+  }
+  if($('areaScreen').classList.contains('active')) renderArea();
+}
+function openArea(area){
+  currentArea = area; areaManage = false; areaNameDraft = {};
+  closeAreaDlg();
+  const A = AREAS[area];
+  $('areaDeco').src = A.deco; $('areaTitle').textContent = A.title;
+  $('areaAddBtn').textContent = A.add; $('areaNewName').placeholder = A.ex;
+  screen('areaScreen');
+  renderArea();   // 캐시로 바로 그리고
+  loadPages();    // 최신으로 다시 그림
+}
+function areaStatus(p){
+  if(currentArea === 'study'){
+    const n = p.study_day_count || 0;
+    if(activePageIdsCache.has(p.id)) return { text:`STUDY ${n+1} 진행 중`, cta:'이어가기 ›', go:true };
+    return n > 0 ? { text:`STUDY ${n}까지 완료`, cta:'시작하기 ›' } : { text:'아직 시작한 STUDY가 없어요', cta:'시작하기 ›' };
+  }
+  const si = selfStepInfo[p.id];
+  if(si && si.active) return { text:`STEP ${si.active} 진행 중`, cta:'이어가기 ›', go:true };
+  if(si && si.lastClosed) return { text:`STEP ${si.lastClosed}까지 완료`, cta:'시작하기 ›' };
+  return { text:'아직 시작한 STEP이 없어요', cta:'시작하기 ›' };
+}
+function renderArea(){
+  const box = $('areaList'), list = areaList(), A = AREAS[currentArea];
+  $('areaManageBtn').textContent = areaManage ? '완료' : '관리';
+  $('areaAddBtn').style.display = areaManage ? 'none' : '';
+  $('areaManageBtn').classList.toggle('pri', areaManage); $('areaManageBtn').classList.toggle('sec', !areaManage); // 관리 모드에서는 '완료'가 유일한 버튼
+  if(areaManage){
+    box.innerHTML = list.length ? list.map(p => `<div class="pg-card mg" data-id="${p.id}">
+      <span class="mg-h" data-handle title="끌어서 순서 바꾸기">☰</span>
+      <input class="mg-name" data-name="${p.id}" value="${escapeHtml(areaNameDraft[p.id] ?? p.name)}">
+      <button class="mg-del" data-del="${p.id}">삭제</button></div>`).join('')
+      : `<p class="subtle" style="margin:6px 2px">아직 페이지가 없어요.</p>`;
+    box.querySelectorAll('[data-name]').forEach(inp => inp.addEventListener('input', () => { areaNameDraft[inp.dataset.name] = inp.value; }));
+    box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => confirmDeletePage(b.dataset.del));
+    wireAreaDrag();
+    return;
+  }
+  box.innerHTML = list.length ? list.map(p => {
+    const st = areaStatus(p);
+    return `<div class="pg-card" data-open-page="${p.id}"><img class="pg-ico" src="${A.card}" alt="">
+      <div class="pg-b"><h3>${escapeHtml(p.name)}</h3><div class="pg-sub">${st.text}</div></div>
+      <svg class="pg-chev" viewBox="0 0 24 24" fill="none" stroke="#a49cbd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>`;
+  }).join('') : `<div class="pg-card" style="cursor:default;display:block"><h3>${currentArea==='self' ? '활동 페이지를 만들어주세요' : '학습 페이지를 만들어주세요'}</h3><p class="subtle" style="margin:4px 0 0">${currentArea==='self' ? '러닝, 독서처럼 나만의 활동을 페이지로 만들어 STEP으로 기록해요.' : '학습 영역별로 독립된 STUDY와 복습 흐름을 관리할 수 있어요.'}</p></div>`;
+  box.querySelectorAll('[data-open-page]').forEach(el => el.onclick = () => {
+    if(currentArea === 'self'){ openStepPage(el.dataset.openPage); return; }
+    openPage(el.dataset.openPage);
+  });
+}
+// 관리 모드에서만 ☰ 손잡이로 끌어서 순서를 바꾼다(놓는 순간 저장)
+function wireAreaDrag(){
+  const box = $('areaList');
+  box.querySelectorAll('[data-handle]').forEach(h => h.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const row = h.closest('.pg-card'); row.classList.add('dragging');
+    const move = ev => {
+      const others = [...box.querySelectorAll('.pg-card')].filter(r => r !== row);
+      const before = others.find(r => { const b = r.getBoundingClientRect(); return ev.clientY < b.top + b.height/2; });
+      if(before) box.insertBefore(row, before); else box.appendChild(row);
+    };
+    const up = async () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      row.classList.remove('dragging');
+      await persistAreaOrder();
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }));
+}
+async function persistAreaOrder(){
+  const ids = [...$('areaList').querySelectorAll('.pg-card')].map(r => r.dataset.id);
+  const list = areaList();
+  const changed = ids.map((id,i) => ({ id, i })).filter(x => (list.find(p=>p.id===x.id)||{}).position !== x.i);
+  if(!changed.length) return;
+  const results = await Promise.all(changed.map(x => client.from('study_pages').update({ position:x.i }).eq('id', x.id)));
+  if(results.some(r => r.error)) toast('❌ 순서를 저장하지 못했어요.');
+  await loadPages();
+}
+$('areaManageBtn').onclick = async () => {
+  if(isOffline){ toast('오프라인에서는 페이지를 변경할 수 없어요.'); return; }
+  if(!areaManage){ areaManage = true; areaNameDraft = {}; renderArea(); return; }
+  // 완료: 바뀐 이름만 저장
+  const list = areaList();
+  const edits = Object.entries(areaNameDraft).map(([id,v]) => ({ id, name:(v||'').trim() })).filter(x => x.name && (list.find(p=>p.id===x.id)||{}).name !== x.name);
+  if(edits.length){
+    const rs = await Promise.all(edits.map(x => client.from('study_pages').update({ name:x.name }).eq('id', x.id)));
+    if(rs.some(r => r.error)) toast('❌ 이름을 저장하지 못했어요.'); else toast('저장했어요.');
+  }
+  areaManage = false; areaNameDraft = {};
+  await loadPages(); renderArea();
+};
+// 새 페이지 만들기: 화면 중앙 대화상자(뒤 화면 스크롤 잠금). 닫기는 '취소'(또는 바깥 터치)만
+function openAreaDlg(){
+  if(isOffline){ toast('오프라인에서는 페이지를 만들 수 없어요.'); return; }
+  const A = AREAS[currentArea];
+  $('areaDlgTitle').textContent = A.form; $('areaDlgLabel').textContent = A.label;
+  $('areaNewName').value = ''; $('areaSaveBtn').disabled = true;
+  $('areaDlg').classList.add('show'); $('areaDlg').setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => $('areaNewName').focus(), 50);
+}
+function closeAreaDlg(){
+  $('areaDlg').classList.remove('show'); $('areaDlg').setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+}
+$('areaAddBtn').onclick = openAreaDlg;
+$('areaCancelBtn').onclick = closeAreaDlg;
+$('areaDlg').addEventListener('click', e => { if(e.target === $('areaDlg')) closeAreaDlg(); });
+$('areaNewName').addEventListener('input', () => { $('areaSaveBtn').disabled = !$('areaNewName').value.trim(); });
+let areaSaving = false;
+$('areaSaveBtn').onclick = async () => {
+  if(areaSaving) return;
+  if(isOffline){ toast('오프라인에서는 페이지를 만들 수 없어요.'); return; }
+  const name = $('areaNewName').value.trim();
+  if(!name) return;
+  if(currentArea === 'self' && !kindColumnOk){ toast('자기주도 페이지는 DB 준비(SQL 실행)가 필요해요.'); return; }
+  areaSaving = true; $('areaSaveBtn').disabled = true;
+  const row = { user_id: currentUserId, name, position: areaList().length };
+  if(currentArea === 'self') row.kind = 'self';
+  const { error } = await client.from('study_pages').insert(row);
+  areaSaving = false;
+  if(error){ $('areaSaveBtn').disabled = false; toast(/kind/.test(error.message) ? '자기주도 페이지는 DB 준비(SQL 실행)가 필요해요.' : '❌ ' + error.message); return; }
+  closeAreaDlg();
+  toast(AREAS[currentArea].made);
+  loadPages();
+};
+$('areaNewName').addEventListener('keydown', e => { if(e.key==='Enter' && !e.isComposing) $('areaSaveBtn').click(); });
+$('areaBackBtn').onclick = () => { closeAreaDlg(); areaManage = false; setRole('learner'); screen('homeScreen'); };
+$('areaNotifBtn').onclick = () => $('notifBtn').click();
+$('areaSettingsBtn').onclick = () => $('settingsBtn').click();
+document.querySelectorAll('[data-area]').forEach(c => c.onclick = () => openArea(c.dataset.area));
+
+function confirmDeletePage(pid){
+  const p = areaList().find(x=>x.id===pid); if(!p) return;
+  const isSelf = currentArea === 'self';
+  showModal(`<h3>'${escapeHtml(p.name)}' 페이지를 삭제할까요?</h3>
+  <div class="notice danger"><b>${isSelf ? '이 페이지의 모든 STEP 기록이 함께 삭제됩니다.' : '이 페이지의 모든 STUDY, 복습기록, 학습세션이 함께 삭제됩니다.'}</b></div>
+  <div class="stack"><button class="btn danger full" id="yesDeletePage">YES, 페이지 삭제</button><button class="btn secondary full" id="cancelDeletePage">취소</button></div>`);
+  $('yesDeletePage').onclick = async () => {
+    const { error } = await client.from('study_pages').delete().eq('id', pid);
+    if(error){ toast('❌ ' + error.message); return; }
+    closeModal(); toast('페이지를 삭제했어요.'); await loadPages();
+  };
+  $('cancelDeletePage').onclick = closeModal;
+}
+
+// ===== 자기주도 STEP =====
+// 복습 없음. 한 페이지에 진행 중인 STEP은 하나. 활동명 + 인증 여부가 있으면 마감할 수 있다(별도 "활동 완료" 체크 없음 — 마감이 곧 완료).
+// 입력은 자동 저장(진행 중 행을 직접 update), 시작/마감/취소는 RPC. 마감한 STEP은 기록 탭에서 수정·삭제할 수 있다.
+let stepPage = null;      // 지금 보고 있는 자기주도 페이지
+let stepRow = null;       // 진행 중 STEP(DB 행) 또는 null
+let stepDirty = false, stepSaveTimer = null;
+let stepRecordsCache = [];
+const DB_NEED = '자기주도 STEP은 DB 준비(SQL 실행)가 필요해요.';
+const stepDbMissing = e => !!e && (e.code === '42P01' || e.code === 'PGRST205' || /self_steps|schema cache|does not exist|step_count/i.test(e.message || ''));
+const fmtYMD = ts => new Date(ts).toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'numeric', day:'numeric' });
+
+function stepFieldsHtml(pre, v){
+  return `
+    <div class="fld"><label>활동명</label><input id="${pre}Name" maxlength="60" placeholder="예: 저녁 러닝" value="${escapeHtml(v.activity_name || '')}"></div>
+    <div class="fld"><label>시간·횟수 <span class="opt">선택</span></label><input id="${pre}Amount" maxlength="40" placeholder="예: 30분, 3회, 20쪽" value="${escapeHtml(v.amount_text || '')}"></div>
+    <div class="fld"><label>인증 여부</label><div class="seg" id="${pre}Seg"><button type="button" data-v="1" class="${v.verified === true ? 'on' : ''}">인증함</button><button type="button" data-v="0" class="${v.verified === false ? 'on' : ''}">인증하지 않음</button></div></div>
+    <div class="fld"><label>메모 <span class="opt">선택</span></label><textarea id="${pre}Memo" rows="3" placeholder="예: 오늘은 천천히 3km 뛰었다.">${escapeHtml(v.memo || '')}</textarea></div>`;
+}
+function readStepFields(pre){
+  const on = document.querySelector(`#${pre}Seg button.on`);
+  return { activity_name: $(pre + 'Name').value.trim(), amount_text: $(pre + 'Amount').value.trim(), verified: on ? on.dataset.v === '1' : null, memo: $(pre + 'Memo').value.trim() };
+}
+function wireStepFields(pre, onChange){
+  $(pre + 'Name').addEventListener('input', onChange); $(pre + 'Amount').addEventListener('input', onChange); $(pre + 'Memo').addEventListener('input', onChange);
+  document.querySelectorAll(`#${pre}Seg button`).forEach(b => b.onclick = () => {
+    document.querySelectorAll(`#${pre}Seg button`).forEach(x => x.classList.toggle('on', x === b));
+    onChange();
+  });
+}
+const stepValid = v => !!v.activity_name && v.verified !== null;
+const verifiedLabel = v => v === true ? '인증함' : v === false ? '인증하지 않음' : '';
+
+async function openStepPage(pageId){
+  stepPage = selfPagesCache.find(p => p.id === pageId);
+  if(!stepPage) return;
+  $('stepPageTitle').textContent = stepPage.name;
+  setStepTab('step');
+  screen('stepScreen');
+  await renderStepTab();
+}
+function setStepTab(tab){
+  document.querySelectorAll('.stabs button').forEach(b => b.classList.toggle('active', b.dataset.stab === tab));
+  $('stepTab').style.display = tab === 'step' ? 'block' : 'none';
+  $('stepRecordsTab').style.display = tab === 'records' ? 'block' : 'none';
+}
+document.querySelectorAll('.stabs button').forEach(b => b.onclick = async () => {
+  await flushStepSave();
+  setStepTab(b.dataset.stab);
+  if(b.dataset.stab === 'records') renderStepRecords(); else renderStepTab();
+});
+$('stepBackBtn').onclick = async () => { await flushStepSave(); openArea('self'); };
+$('closeStepBackBtn').onclick = () => { screen('stepScreen'); };
+
+async function renderStepTab(){
+  const box = $('stepTab'), page = stepPage;
+  if(!page) return;
+  if(isOffline){ box.innerHTML = `<div class="notice offline"><b>오프라인 읽기 전용</b><br>STEP 시작·기록·마감은 온라인에서만 할 수 있어요.</div>`; return; }
+  const { data: row, error } = await client.from('self_steps').select('*').eq('page_id', page.id).eq('status', 'active').maybeSingle();
+  if(error){ box.innerHTML = `<div class="notice danger">${stepDbMissing(error) ? DB_NEED : '❌ ' + escapeHtml(error.message)}</div>`; return; }
+  stepRow = row; stepDirty = false;
+  if(!row){
+    const { data: fp } = await client.from('study_pages').select('*').eq('id', page.id).single();
+    const next = ((fp && fp.step_count) || 0) + 1;
+    box.innerHTML = `<div class="card green"><span class="pill">STEP ${next} 준비중</span>
+      <h2 style="margin-top:11px">활동을 시작할까요?</h2><p class="subtle">활동명과 인증 여부를 기록하고 STEP을 마감해요.</p>
+      <button class="btn primary full" id="startStepBtn">STEP 시작</button></div>`;
+    $('startStepBtn').onclick = async () => {
+      $('startStepBtn').disabled = true;
+      const { error: e } = await client.rpc('start_self_step', { p_page_id: page.id });
+      if(e){ toast(stepDbMissing(e) ? DB_NEED : '❌ ' + e.message); $('startStepBtn').disabled = false; return; }
+      await renderStepTab(); loadPages();
+    };
+    return;
+  }
+  box.innerHTML = `<div class="card green">
+      <div class="row"><span class="pill">STEP ${row.step_number} 진행 중 · ${fmtYMD(row.started_at)} 시작</span><span class="txt-act" id="cancelStepBtn">STEP 취소</span></div>
+      ${stepFieldsHtml('step', row)}
+      <div class="subtle" id="stepSaveState" style="margin-top:10px;text-align:right">입력하면 자동으로 저장돼요.</div>
+    </div>
+    <button class="btn primary full" id="closeStepBtn" style="margin-top:6px">STEP 마감하기</button>
+    <p class="subtle" id="stepCloseHint" style="margin:8px 2px 0">활동명과 인증 여부를 입력하면 마감할 수 있어요.</p>`;
+  const refreshClose = () => { const ok = stepValid(readStepFields('step')); $('closeStepBtn').disabled = !ok; $('stepCloseHint').style.display = ok ? 'none' : ''; };
+  refreshClose();
+  wireStepFields('step', () => {
+    refreshClose(); stepDirty = true; $('stepSaveState').textContent = '저장 중…';
+    clearTimeout(stepSaveTimer); stepSaveTimer = setTimeout(flushStepSave, 700);
+  });
+  $('closeStepBtn').onclick = async () => { await flushStepSave(); openCloseStepScreen(row.id); };
+  $('cancelStepBtn').onclick = () => confirmCancelStep(row);
+}
+async function flushStepSave(){
+  clearTimeout(stepSaveTimer);
+  if(!stepDirty || !stepRow || !$('stepName')) return;
+  const v = readStepFields('step'); stepDirty = false;
+  const { error } = await client.from('self_steps').update({ ...v, updated_at: new Date().toISOString() }).eq('id', stepRow.id);
+  const el = $('stepSaveState');
+  if(error){ stepDirty = true; if(el) el.textContent = '저장하지 못했어요. 연결을 확인해주세요.'; }
+  else if(el) el.textContent = '저장됨';
+}
+function confirmCancelStep(row){
+  showModal(`<h3>STEP ${row.step_number}을 취소할까요?</h3>
+    <div class="notice danger"><b>입력한 내용이 사라지고, STEP 번호도 처음 상태로 돌아가요.</b></div>
+    <div class="stack"><button class="btn danger full" id="yesCancelStep">STEP 취소</button><button class="btn secondary full" id="noCancelStep">계속 작성</button></div>`);
+  $('noCancelStep').onclick = closeModal;
+  $('yesCancelStep').onclick = async () => {
+    const { error } = await client.rpc('cancel_self_step', { p_step_id: row.id });
+    if(error){ toast('❌ ' + error.message); return; }
+    closeModal(); stepRow = null; stepDirty = false; toast('STEP을 취소했어요.');
+    await renderStepTab(); loadPages();
+  };
+}
+
+// 마감 전 확인 화면 — 빈 선택 항목(시간·횟수, 메모)은 행 자체를 보여주지 않는다
+async function openCloseStepScreen(stepId){
+  const { data: st, error } = await client.from('self_steps').select('*').eq('id', stepId).single();
+  if(error || !st){ toast('❌ ' + (error ? error.message : 'STEP을 찾을 수 없어요.')); return; }
+  const rows = [
+    `<div class="kv"><div class="k">활동명</div><div class="v">${escapeHtml(st.activity_name)}</div></div>`,
+    st.amount_text ? `<div class="kv"><div class="k">시간·횟수</div><div class="v">${escapeHtml(st.amount_text)}</div></div>` : '',
+    `<div class="kv"><div class="k">인증</div><div class="v">${verifiedLabel(st.verified)}</div></div>`,
+    st.memo ? `<div class="kv"><div class="k">메모</div><div class="v">${escapeHtml(st.memo)}</div></div>` : ''
+  ].join('');
+  $('closeStepBody').innerHTML = `
+    <h2 style="margin:4px 0 4px">STEP을 마감할까요?</h2>
+    <p class="subtle" style="margin:0 0 12px">${escapeHtml(stepPage.name)} · STEP ${st.step_number}</p>
+    <div class="card" style="box-shadow:none;padding:6px 14px">${rows}</div>
+    <p style="margin:18px 2px 14px;font-size:13px;font-weight:700;color:var(--ink)">마감 후에도 기록에서 수정할 수 있어요.</p>
+    <button class="btn primary full" id="finalCloseStepBtn">STEP 마감하기</button>`;
+  screen('closeStepScreen');
+  $('finalCloseStepBtn').onclick = async () => {
+    $('finalCloseStepBtn').disabled = true;
+    const { data: closed, error: e } = await client.rpc('close_self_step', { p_step_id: stepId });
+    if(e){ toast('❌ ' + e.message); $('finalCloseStepBtn').disabled = false; return; }
+    toast(closed && closed.summary_id ? '짝꿍에게 Re:Step을 보냈어요 🌱' : `STEP ${st.step_number}을 마감했어요 🌱`);
+    stepRow = null; stepDirty = false;
+    screen('stepScreen'); setStepTab('step'); renderStepTab(); loadPages();
+  };
+}
+
+// 기록 탭: 마감한 STEP 목록(최신순) → 눌러서 수정/삭제
+async function renderStepRecords(){
+  const box = $('stepRecordsTab'), page = stepPage;
+  if(!page) return;
+  const { data, error } = await client.from('self_steps').select('*').eq('page_id', page.id).eq('status', 'closed').order('step_number', { ascending:false });
+  if(error){ box.innerHTML = `<div class="notice danger">${stepDbMissing(error) ? DB_NEED : '❌ ' + escapeHtml(error.message)}</div>`; return; }
+  stepRecordsCache = data || [];
+  box.innerHTML = stepRecordsCache.length ? stepRecordsCache.map(t => `<div class="record" data-step-id="${t.id}">
+      <div class="row" style="align-items:flex-start"><div style="font-size:17px;font-weight:850;color:var(--ink)">STEP ${t.step_number}</div><span class="rec-x" data-del-step="${t.id}" title="STEP 삭제" aria-label="STEP 삭제">×</span></div>
+      <div class="subtle" style="margin-top:4px;font-size:11.5px;font-weight:500">${fmtYMD(t.closed_at)}</div>
+      <div class="row" style="margin-top:8px;gap:10px">
+        <div class="subtle" style="font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(t.activity_name)}${t.amount_text ? ' · ' + escapeHtml(t.amount_text) : ''}</div>
+        <span style="font-size:12.5px;font-weight:700;color:var(--green-d);flex-shrink:0">보기 →</span>
+      </div></div>`).join('')
+    : '<div class="card"><p class="subtle" style="margin:0">아직 마감한 STEP이 없어요.</p></div>';
+  // × = STEP 삭제(바로 지우지 않고 기존 삭제 확인을 거침). 카드 전체 클릭(상세 열기)과 안 겹치게 전파 차단. STUDY 기록 목록과 같은 방식.
+  box.querySelectorAll('[data-del-step]').forEach(x => x.onclick = e => {
+    e.stopPropagation();
+    const t = stepRecordsCache.find(r => r.id === x.dataset.delStep);
+    if(t) confirmDeleteStep(t);
+  });
+  box.querySelectorAll('[data-step-id]').forEach(el => el.onclick = () => openStepRecord(stepRecordsCache.find(t => t.id === el.dataset.stepId)));
+}
+// STEP 기록 상세 = 읽기 화면(전공 STUDY 기록 상세와 같은 골격: studyDetailScreen + .sd 요약 카드). 입력칸은 '수정'을 눌렀을 때만 열린다.
+async function openStepRecord(t){
+  if(!t) return;
+  const back = () => { screen('stepScreen'); setStepTab('records'); renderStepRecords(); };
+  // 받은 Re:Cheer: 이 STEP으로 보낸 Re:Step(summary_id)에 도착한 응원(읽기 전용). 발송된 Re:Step이 없으면 영역을 그리지 않음
+  let cheerHtml = '';
+  if(t.summary_id){
+    const { data: sm } = await client.from('cheer_summaries').select('*, cheer_messages(*)').eq('id', t.summary_id).eq('learner_user_id', currentUserId).maybeSingle();
+    if(sm){
+      const stt = learnerItemState(sm, await getMyConnectedLink());
+      cheerHtml = stt.type === 'visible'
+        ? sdCheerNote('받은 Re:Cheer', stt.msg.message, sdWhen(stt.msg.created_at))
+        : `<div class="section-head" style="margin-top:26px;margin-bottom:8px"><h3 style="margin:0;font-size:14px">받은 Re:Cheer</h3></div><p class="subtle" style="margin:0 2px">${stt.type === 'locked' ? '이전 연결에서 받은 Re:Cheer예요.' : '아직 받은 응원이 없어요.'}</p>`;
+    }
+  }
+  // 활동명·인증은 항상, 시간·횟수·메모는 값이 있을 때만(빈 행/빈 박스 없음)
+  const kv = (k, v) => `<div class="kv"><div class="k">${k}</div><div class="v">${escapeHtml(v)}</div></div>`;
+  const rows = kv('활동명', t.activity_name || '')
+    + (t.amount_text ? kv('시간·횟수', t.amount_text) : '')
+    + kv('인증', verifiedLabel(t.verified) || '인증하지 않음')
+    + (t.memo ? kv('메모', t.memo) : '');
+  $('studyDetailBody').innerHTML = `<div class="sd sage">
+      <div class="sd-sum"><h2>${escapeHtml(stepPage.name)} · STEP ${t.step_number}</h2><div class="sd-date" style="margin-bottom:0">${escapeHtml(fmtYMD(t.closed_at))}</div></div>
+      <div class="section-head" style="margin:20px 0 8px"><h3 style="margin:0;font-size:14px">활동 상세</h3><div class="dr-a"><span class="dr-edit" id="stepRecEdit">수정</span></div></div>
+      <div class="sd-act">${rows}</div>
+    </div><div id="sdCheer">${cheerHtml}</div><div style="height:8px"></div>`;
+  studyDetailBackHandler = back;
+  screen('studyDetailScreen');
+  enterDetailNav(back);
+  window.scrollTo(0, 0);
+  $('stepRecEdit').onclick = () => editStepRecord(t, nt => openStepRecord(nt));
+}
+// 수정: 사용자가 '수정'을 눌렀을 때만 입력 폼을 연다. 이미 보낸 Re:Step은 안 바뀐다는 안내는 여기서만 보여준다.
+function editStepRecord(t, onSaved){
+  showModal(`<h3 style="margin-bottom:2px">${escapeHtml(stepPage.name)} · STEP ${t.step_number} 수정</h3>
+    ${t.summary_id ? '<div class="subtle" style="margin-top:6px">이미 보낸 Re:Step은 바뀌지 않아요.</div>' : ''}
+    ${stepFieldsHtml('rec', t)}
+    <div class="stack" style="margin-top:18px"><button class="btn primary full" id="recSave">저장</button><button class="btn secondary full" id="recClose">닫기</button></div>`);
+  const original = JSON.stringify({ activity_name:t.activity_name, amount_text:t.amount_text, verified:t.verified, memo:t.memo });
+  const isDirty = () => JSON.stringify(readStepFields('rec')) !== original;
+  wireStepFields('rec', () => {});
+  modalDirtyGuard = () => { if(isDirty()) toast('저장하지 않은 변경이 있어요. 저장하거나 닫기를 눌러주세요.'); else closeModal(); };
+  $('recClose').onclick = closeModal;
+  $('recSave').onclick = async () => {
+    const v = readStepFields('rec');
+    if(!stepValid(v)){ toast('활동명과 인증 여부를 입력해주세요.'); return; }
+    const { error } = await client.from('self_steps').update({ ...v, updated_at: new Date().toISOString() }).eq('id', t.id);
+    if(error){ toast('❌ ' + error.message); return; }
+    closeModal(); toast('수정했어요.');
+    onSaved({ ...t, ...v });
+  };
+}
+function confirmDeleteStep(t, onDeleted){
+  showModal(`<h3>STEP ${t.step_number}을 삭제할까요?</h3>
+    <div class="notice danger"><b>삭제한 STEP은 기록에서 사라져요.</b>${t.summary_id ? '<br>이미 보낸 Re:Step과 받은 Re:Cheer는 그대로 남아요.' : ''}</div>
+    <div class="stack"><button class="btn danger full" id="yesDelStep">YES, STEP 삭제</button><button class="btn secondary full" id="noDelStep">취소</button></div>`);
+  $('noDelStep').onclick = closeModal;
+  $('yesDelStep').onclick = async () => {
+    const { data, error } = await client.from('self_steps').delete().eq('id', t.id).select('id');
+    if(error){ toast('❌ ' + error.message); return; }
+    if(!data || !data.length){ toast('삭제하지 못했어요. 권한을 확인해주세요.'); return; }
+    closeModal(); toast('삭제했어요.'); loadPages();
+    if(onDeleted) onDeleted(); else renderStepRecords();
+  };
+}
+
+// ===== 복습 큐 알고리즘 =====
+function dueGroups(checkpoints, nextStep){
+  const due = checkpoints.filter(r => r.due_step <= nextStep);
+  const map = {};
+  due.forEach(r => { (map[r.study_day_id] = map[r.study_day_id] || []).push(r); });
+  return Object.entries(map).map(([studyDayId, rs]) => {
+    const exact = rs.filter(r => r.due_step === nextStep);
+    return {
+      studyDayId, rs,
+      stageIndices: rs.map(r=>r.stage_index).sort((a,b)=>a-b),
+      regular: exact.length>0,
+      exactPriority: exact.length ? Math.min(...exact.map(r=>r.stage_index)) : 99,
+      overduePriority: Math.min(...rs.map(r=>r.stage_index)),
+      oldestDelay: Math.max(...rs.map(r=>nextStep-r.due_step)),
+      maxMiss: Math.max(...rs.map(r=>r.exclusion_count||0))
+    };
+  });
+}
+function chooseQueue(checkpoints, daysById, nextStep){
+  const gs = dueGroups(checkpoints, nextStep);
+  const regular = gs.filter(g=>g.regular).sort((a,b)=>a.exactPriority-b.exactPriority || (daysById[a.studyDayId].day_number - daysById[b.studyDayId].day_number));
+  const late = gs.filter(g=>!g.regular).sort((a,b)=>b.oldestDelay-a.oldestDelay || a.overduePriority-b.overduePriority);
+  const protectedLate = late.filter(g=>g.maxMiss>=3).sort((a,b)=>b.maxMiss-a.maxMiss || b.oldestDelay-a.oldestDelay || a.overduePriority-b.overduePriority);
+  let selected = [];
+  if(regular.length >= 10){
+    selected = protectedLate.length ? regular.slice(0,9).concat(protectedLate[0]) : regular.slice(0,10);
+  } else {
+    selected = regular.slice();
+    let pool = late.slice();
+    if(protectedLate.length){
+      const protect = protectedLate[0];
+      if(!selected.some(x=>x.studyDayId===protect.studyDayId)){ selected.push(protect); pool = pool.filter(x=>x.studyDayId!==protect.studyDayId); }
+    }
+    for(const g of pool){ if(selected.length>=10) break; if(!selected.some(x=>x.studyDayId===g.studyDayId)) selected.push(g); }
+  }
+  return { all: gs, selected };
+}
+
+// ===== 페이지 상세 =====
+async function openPage(pageId, restore){
+  currentPageId = pageId;
+  resetStudyUiState();
+  if(restore){ // 푸시 등으로 앱이 다시 시작된 뒤 작업 화면 복원: 서브탭·펼친 폼·입력 중이던 값
+    studySubTab = restore.sub || 'review';
+    draftFormOpen = !!restore.formOpen;
+    draftFormValues = { ...emptyDraftValues(), ...(restore.form || {}) };
+    editingDraftIndex = (restore.editing === undefined) ? null : restore.editing;
+  }
+  const page = pagesCache.find(p=>p.id===pageId);
+  $('pageTitle').textContent = page.name;
+  screen('pageScreen');
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab==='today'));
+  $('todayTab').style.display='block'; $('recordsTab').style.display='none'; $('statusTab').style.display='none';
+  await renderToday(page);
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active', x===b));
+  $('todayTab').style.display = b.dataset.tab==='today' ? 'block':'none';
+  $('recordsTab').style.display = b.dataset.tab==='records' ? 'block':'none';
+  $('statusTab').style.display = b.dataset.tab==='status' ? 'block':'none';
+  const page = pagesCache.find(p=>p.id===currentPageId);
+  if(b.dataset.tab==='records') renderRecords(page);
+  if(b.dataset.tab==='status') renderStatus(page);
+});
+$('backHomeBtn').onclick = () => { clearWorkState(); openArea('study'); }; // 페이지 → 전공/교과 목차
+
+async function renderToday(page){
+  const offlineNotice = isOffline ? `<div class="notice offline"><b>오프라인 읽기 전용</b><br>마지막 저장 기록은 볼 수 있지만 수정·복습 체크·마감은 할 수 없어요.</div>` : '';
+  if(isOffline){
+    $('todayTab').innerHTML = offlineNotice + `<div class="card green"><span class="pill">STUDY ${page.study_day_count+1} 준비중</span>
+     <h2 style="margin-top:11px">학습을 시작할까요?</h2><p class="subtle">학습을 시작하면 복습할 내용을 준비해드려요.</p>
+     <button class="btn primary full" disabled>학습 시작</button></div>`;
+    return;
+  }
+  const { data: activeSessions } = await client.from('study_sessions').select('*').eq('page_id', page.id).eq('status','active');
+  if(activeSessions.length){
+    renderSessionPanel(page, activeSessions[0]);
+  } else {
+    $('todayTab').innerHTML = `<div class="card green"><span class="pill">STUDY ${page.study_day_count+1} 준비중</span>
+     <h2 style="margin-top:11px">학습을 시작할까요?</h2><p class="subtle">학습을 시작하면 복습할 내용을 준비해드려요.</p>
+     <button class="btn primary full" id="startStudyBtn">학습 시작</button></div>`;
+    $('startStudyBtn').onclick = () => startSession(page);
+  }
+}
+
+async function startSession(page){
+  toast('복습 큐 계산 중...');
+  const { data: days } = await client.from('study_days').select('*').eq('page_id', page.id);
+  const dayIds = days.map(d=>d.id);
+  const { data: checkpoints } = dayIds.length
+    ? await client.from('review_checkpoints').select('*').in('study_day_id', dayIds).eq('status','pending')
+    : { data: [] };
+  const daysById = Object.fromEntries(days.map(d=>[d.id,d]));
+  const nextStep = (page.review_step||0) + 1;
+  const { all, selected } = chooseQueue(checkpoints, daysById, nextStep);
+  const selectedIds = new Set(selected.map(g=>g.studyDayId));
+  const allCheckpointIds = all.flatMap(g=>g.rs.map(r=>r.id));
+  const selectedCheckpointIds = all.filter(g=>selectedIds.has(g.studyDayId)).flatMap(g=>g.rs.map(r=>r.id));
+  const queue = selected.map(g=>({ studyDayId: g.studyDayId, stageIndices: g.stageIndices, regular: g.regular, completed:false }));
+
+  const { data, error } = await client.rpc('start_study_session_with_queue', {
+    p_page_id: page.id, p_device_id: deviceId, p_queue: queue,
+    p_checkpoint_ids: allCheckpointIds, p_selected_ids: selectedCheckpointIds
+  });
+  if(error){ toast('❌ ' + error.message); return; }
+  renderSessionPanel(page, data);
+}
+
+async function renderSessionPanel(page, session, skipCapture){
+  if(!skipCapture) captureDraftForm();
+  const dayIds = [...new Set(session.queue.map(q=>q.studyDayId))];
+  const { data: days } = dayIds.length
+    ? await client.from('study_days').select('*, study_day_items(*)').in('id', dayIds)
+    : { data: [] };
+  const daysById = Object.fromEntries((days||[]).map(d=>[d.id,d]));
+
+  const otherDevice = session.active_device_id !== deviceId;
+  const editable = !isOffline && !otherDevice && !localReadOnlyPages.has(page.id);
+
+  let accessNotice = '';
+  if(isOffline){
+    accessNotice += `<div class="notice offline"><b>오프라인 읽기 전용</b><br>마지막 저장 기록은 볼 수 있지만 수정·복습 체크·마감은 할 수 없어요.</div>`;
+  } else if(otherDevice){
+    accessNotice += `<div class="notice readonly" id="deviceNoticeBox"><b>${escapeHtml(page.name)} 학습이 다른 기기에서 진행 중이에요.</b><br>
+    ${localReadOnlyPages.has(page.id)?'현재 이 기기에서는 읽기만 가능합니다.':'아래에서 접근 방식을 선택해주세요.'}
+    <div class="row" style="margin-top:9px"><button class="smallbtn" data-readonly="${page.id}">읽기만 허용</button><button class="smallbtn" data-takeover="${session.id}">이 기기에서 이어가기</button></div></div>`;
+  }
+
+  const cardsHtml = session.queue.map(q=>{
+    const d = daysById[q.studyDayId];
+    const names = q.stageIndices.map(i=>STAGE_NAMES[i]);
+    const label = names.length>1 ? names.join(' + ')+' 통합' : names[0];
+    const items = (d && d.study_day_items || []).map(it=>{
+      const range = formatPageRange(it.page_from, it.page_to);
+      const memoLink = it.memo ? `<span data-memo-item="${it.id}" data-memo-day="${d.id}" style="margin-left:6px;font-size:11.5px;font-weight:600;color:#5f8a63;cursor:pointer;white-space:nowrap">메모 보기</span>` : '';
+      return `<div style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:4px">• ${escapeHtml(it.title)} ${escapeHtml(range)}${memoLink}</div>`;
+    }).join('');
+    const lateBadge = q.regular ? '' : ' <span class="pill gray">밀린 복습</span>';
+    const deepestIdx = Math.max(...q.stageIndices);
+    return `<div class="review ${q.completed?'done':''}" data-study-day="${q.studyDayId}" data-completed="${q.completed}" style="${editable?'':'opacity:.7;cursor:default'}">
+      <div class="row"><div><div class="review-title">STUDY ${d?d.day_number:'?'}</div>
+      <div style="margin-top:6px"><span class="pill" style="background:${STAGE_COLORS[deepestIdx]};color:#3d7a48">${escapeHtml(label)}</span>${lateBadge}</div></div>
+      <div class="check">${q.completed?'✅':'○'}</div></div>
+      <div class="review-items">${items}</div>
+    </div>`;
+  }).join('') || '<div class="card"><p class="subtle" style="margin:0">이번 세션에 배정된 복습이 없어요.</p></div>';
+
+  const hasActivity = session.queue.some(q=>q.completed) || session.drafts.length>0;
+  const editingDraft = (editingDraftIndex !== null && session.drafts[editingDraftIndex]) ? session.drafts[editingDraftIndex] : null;
+  if(editingDraftIndex !== null && !editingDraft) editingDraftIndex = null; // 복원 후 항목이 바뀌었다면 추가 모드로
+  const formVisible = draftFormOpen || !!editingDraft;
+  const v = draftFormValues;
+  const count = session.drafts.length;
+
+  // 저장된 새 학습 목록(입력폼과 시각적으로 분리된 작은 paper row). 수정/삭제는 기존 기능 그대로.
+  const draftRows = session.drafts.map((d,i)=>{
+    const range = formatPageRange(d.pageFrom, d.pageTo);
+    return `<div class="dr-row${i===editingDraftIndex?' editing':''}"><span class="dr-n">${i+1}</span>
+      <div class="dr-b"><div class="dr-t">${escapeHtml(d.title)}</div>${range?`<div class="dr-s">${escapeHtml(range)}</div>`:''}</div>
+      <div class="dr-a"><span data-edit-draft="${i}" class="dr-edit${editable?'':' off'}">수정</span><span data-remove-draft="${i}" class="dr-del${editable?'':' off'}">삭제</span></div></div>`;
+  }).join('');
+
+  const reviewPane = cardsHtml;
+  const newPane = `
+    ${count ? `<div>${draftRows}</div>` : `<p class="subtle" style="margin:4px 0 12px">아직 새롭게 기록한 학습이 없어요.</p>`}
+    <button class="btn ghost full" id="addDraftToggle" style="margin-top:12px;${formVisible?'display:none':''}" ${editable?'':'disabled'}>＋ 새 학습 추가</button>
+    <div id="draftForm" class="dr-form" style="${formVisible?'':'display:none'}">
+      ${editingDraft ? `<p class="subtle" style="margin-bottom:9px">✏️ 수정 중인 항목이에요.</p>` : ''}
+      <div class="input-group"><label>학습 내용</label><input id="newTitle" placeholder="학습한 내용을 적어주세요" value="${escapeHtml(v.title)}" ${editable?'':'disabled'}></div>
+      <div class="input-group" style="margin-top:9px"><label>페이지</label><div class="row" style="gap:8px"><input id="newFrom" placeholder="시작 p." value="${escapeHtml(v.from)}" ${editable?'':'disabled'}><input id="newTo" placeholder="끝 p." value="${escapeHtml(v.to)}" ${editable?'':'disabled'}></div></div>
+      <div class="input-group" style="margin-top:9px"><label>메모 <span class="subtle">(선택)</span></label><textarea id="newMemo" rows="2" placeholder="개인 메모는 Re:Cheer에 공유되지 않아요." ${editable?'':'disabled'}>${escapeHtml(v.memo)}</textarea></div>
+      <div class="row" style="gap:8px;margin-top:12px"><button class="btn secondary" style="flex:1" id="cancelDraftFormBtn" ${editable?'':'disabled'}>취소</button><button class="btn save" style="flex:2" id="addDraftBtn" ${editable?'':'disabled'}>${editingDraft ? '수정 저장' : '저장하기'}</button></div>
+    </div>`;
+
+  // 학습취소/마감하기는 상태와 무관하게 항상 같은 자리에 둠(DOM에서 지우지 않고 disabled만 전환).
+  // 활동 0 → 학습취소 활성/마감하기 비활성, 활동 ≥1 → 반대. 마감은 탭이 아니라 STUDY 전체의 행동이라 상단에 둠.
+  $('todayTab').innerHTML = accessNotice + `
+    <div id="sessionContentArea" class="${editable?'':'locked-dim'}">
+    <div class="card"><div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+      <div style="min-width:0"><span class="pill">학습 진행 중</span><span class="subtle" style="margin-left:6px;font-weight:600">· ${new Date(session.started_at).toLocaleDateString('ko-KR', {timeZone:'Asia/Seoul'})} 시작</span><h2 style="margin:9px 0 0">STUDY ${page.study_day_count+1}</h2></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="sa-btn" id="cancelStudyBtn" ${(editable&&!hasActivity)?'':'disabled'}>학습취소</button>
+        <button class="sa-btn close" id="closeStudyBtn" ${(editable&&hasActivity)?'':'disabled'}>마감하기</button>
+      </div>
+    </div></div>
+    <div id="saShell">
+      <div class="sa-tabs" id="saTabs"><button data-st="review" class="${studySubTab==='review'?'active':''}">복습</button><button data-st="new" class="${studySubTab==='new'?'active':''}">새 학습</button></div>
+      <div class="sa-panel" id="saPanel"><div class="rs-viewport noswipe"><div class="rs-page">${reviewPane}</div><div class="rs-page">${newPane}</div></div></div>
+    </div>
+    </div>`;
+
+  // 탭 누름으로만 이동(스와이프 없음). Re:Step 상세와 같은 셸을 쓰되 사용자 스와이프는 막아둠. 화면을 다시 그리지 않고 옆으로 넘기기만 하므로
+  // 입력 중인 값·체크 상태가 유지됨. 다시 그릴 때는 보던 탭 위치로 바로 복원.
+  wireSdShell($('saShell'), 'saShell', i => { studySubTab = i === 1 ? 'new' : 'review'; }).jump(studySubTab === 'new' ? 1 : 0);
+
+  document.querySelectorAll('[data-readonly]').forEach(b=>b.onclick=()=>{ localReadOnlyPages.add(b.dataset.readonly); renderSessionPanel(page, session); });
+  document.querySelectorAll('[data-takeover]').forEach(b=>b.onclick=()=>{
+    if(isOffline){ toast('오프라인에서는 기기 전환을 할 수 없어요.'); return; }
+    const sessionId = b.dataset.takeover;
+    $('deviceNoticeBox').innerHTML = `<b>이 기기에서 학습을 이어갈까요?</b><br>기존 기기에서는 읽기만 가능해집니다. 같은 세션과 복습큐는 그대로 유지됩니다.
+      <div class="row" style="margin-top:9px"><button class="smallbtn" id="confirmTakeoverInline">이어가기</button><button class="smallbtn" id="cancelTakeoverInline">취소</button></div>`;
+    $('confirmTakeoverInline').onclick = async () => {
+      const { data, error } = await client.rpc('takeover_session_device', { p_session_id: sessionId, p_device_id: deviceId });
+      if(error){ toast('❌ ' + error.message); return; }
+      localReadOnlyPages.delete(page.id);
+      toast('이 기기로 학습을 전환했어요.');
+      renderSessionPanel(page, data);
+    };
+    $('cancelTakeoverInline').onclick = () => renderSessionPanel(page, session);
+  });
+
+  // "메모 보기"는 항상 동작해야 함(읽기 동작이라 세션이 잠겨있어도/오프라인이어도 무관) —
+  // 그래서 아래 editable 게이트보다 앞에 둠. 상세페이지에서 학습 내용을 수정했을 수 있으니,
+  // "←"로 돌아올 때 활성 세션을 서버에서 다시 읽어 복습 카드를 새로 그림. 복습 체크 상태는
+  // session.queue(서버)에 저장돼 있어서 다시 그려도 그대로 유지됨. 그 뒤 스크롤 위치 복원.
+  document.querySelectorAll('[data-memo-item]').forEach(el => {
+    el.onclick = async (e) => {
+      e.stopPropagation(); // 카드 자체의 복습 체크 토글과 안 겹치게
+      const savedScrollY = window.scrollY;
+      const { data: freshDay } = await client.from('study_days').select('*, study_day_items(*)').eq('id', el.dataset.memoDay).single();
+      if(!freshDay) return;
+      await renderStudyDayDetail(freshDay, page, async () => {
+        screen('pageScreen');
+        if(isOffline){
+          await renderToday(page);
+        } else {
+          const { data: active } = await client.from('study_sessions').select('*').eq('page_id', page.id).eq('status','active');
+          if(active && active.length) await renderSessionPanel(page, active[0]);
+          else await renderToday(page); // 그 사이 세션이 끝났다면 시작 전 화면으로
+        }
+        window.scrollTo(0, savedScrollY);
+      }, el.dataset.memoItem);
+    };
+  });
+
+  if(!editable) return;
+
+  document.querySelectorAll('[data-study-day]').forEach(card => {
+    card.onclick = async () => {
+      const completed = card.dataset.completed !== 'true';
+      const { data, error } = await client.rpc('toggle_review_item', { p_session_id: session.id, p_study_day_id: card.dataset.studyDay, p_completed: completed, p_device_id: deviceId });
+      if(error){ toast('❌ ' + error.message); renderToday(page); return; }
+      renderSessionPanel(page, data);
+    };
+  });
+  $('addDraftToggle').onclick = () => {
+    draftFormOpen = true;
+    $('addDraftToggle').style.display = 'none';
+    $('draftForm').style.display = 'block';
+    $('newTitle').focus();
+  };
+  $('cancelDraftFormBtn').onclick = () => {
+    editingDraftIndex = null; draftFormOpen = false; draftFormValues = emptyDraftValues();
+    renderSessionPanel(page, session, true);
+  };
+  $('addDraftBtn').onclick = async () => {
+    const title = $('newTitle').value.trim();
+    const pageFrom = $('newFrom').value.trim();
+    const pageTo = $('newTo').value.trim();
+    const memo = $('newMemo').value.trim();
+    if(!title){ toast('학습 내용을 입력해주세요.'); return; }
+    if(editingDraftIndex !== null){
+      const { data, error } = await client.rpc('update_draft_item', { p_session_id: session.id, p_index: editingDraftIndex, p_title: title, p_page_from: pageFrom, p_page_to: pageTo, p_memo: memo, p_device_id: deviceId });
+      if(error){ toast('❌ ' + error.message); renderToday(page); return; }
+      toast('새 학습을 수정했어요.');
+      editingDraftIndex = null;
+    } else {
+      const { data, error } = await client.rpc('add_draft_item', { p_session_id: session.id, p_title: title, p_page_from: pageFrom, p_page_to: pageTo, p_memo: memo, p_device_id: deviceId });
+      if(error){ toast('❌ ' + error.message); renderToday(page); return; }
+      toast('새 학습을 추가했어요.');
+      var added = data;
+    }
+    // 저장 성공 → 폼 접고 입력값 초기화, 목록엔 즉시 반영(서버가 돌려준 최신 세션으로 다시 그림)
+    draftFormOpen = false; draftFormValues = emptyDraftValues();
+    const { data: fresh } = await client.from('study_sessions').select('*').eq('id', session.id).single();
+    renderSessionPanel(page, fresh || added || session, true);
+  };
+  document.querySelectorAll('[data-edit-draft]').forEach(el => {
+    el.onclick = () => {
+      const i = +el.dataset.editDraft, d = session.drafts[i];
+      editingDraftIndex = i;
+      draftFormValues = { title: d.title||'', from: d.pageFrom||'', to: d.pageTo||'', memo: d.memo||'' };
+      studySubTab = 'new';
+      renderSessionPanel(page, session, true);
+    };
+  });
+  document.querySelectorAll('[data-remove-draft]').forEach(btn => {
+    btn.onclick = async () => {
+      const { data, error } = await client.rpc('remove_draft_item', { p_session_id: session.id, p_index: +btn.dataset.removeDraft, p_device_id: deviceId });
+      if(error){ toast('❌ ' + error.message); renderToday(page); return; }
+      if(editingDraftIndex !== null){ editingDraftIndex = null; draftFormOpen = false; draftFormValues = emptyDraftValues(); } // 번호가 밀렸을 수 있어 수정 상태는 초기화
+      renderSessionPanel(page, data, true);
+    };
+  });
+  $('cancelStudyBtn').onclick = async () => {
+    if(hasActivity) return;
+    const { error } = await client.rpc('cancel_study_session', { p_session_id: session.id, p_device_id: deviceId });
+    if(error){ toast('❌ ' + error.message); renderToday(page); return; }
+    toast('학습을 취소했어요.');
+    resetStudyUiState();
+    renderToday(page);
+  };
+  // "마감하기"는 바로 마감하지 않고 별도의 마감 확인 화면으로 이동. 최종 마감은 그 화면의 버튼에서만.
+  $('closeStudyBtn').onclick = () => { if(hasActivity) openCloseStudyScreen(page, session); };
+}
+
+// ===== STUDY 마감 확인 화면 =====
+// 이번 STUDY 결과를 간결하게 확인하고 종료하는 화면. 실제 마감은 기존 close_study_session RPC 그대로.
+function openCloseStudyScreen(page, session){
+  const done = session.queue.filter(q=>q.completed).length;
+  const undone = session.queue.length - done;
+  const drafts = session.drafts;
+  const title = drafts.length ? `STUDY ${page.study_day_count+1} 마감` : '복습 세션 마감';
+  const draftList = drafts.map((d,i)=>`<div class="dr-row"><span class="dr-n">${i+1}</span><div class="dr-b"><div class="dr-t">${escapeHtml(d.title)}</div></div></div>`).join('');
+  $('closeStudyBody').innerHTML = `
+    <h2 style="margin:4px 0 4px">${title}</h2>
+    <p class="subtle" style="margin:0 0 6px">이번 STUDY를 확인해주세요.</p>
+    <div class="section-head"><h3>복습</h3></div>
+    <div class="card" style="padding:12px 14px;box-shadow:none"><div class="row"><span>완료</span><b>${done}개</b></div><div class="row" style="margin-top:6px"><span class="subtle">미완료</span><span class="subtle">${undone}개</span></div></div>
+    <div class="section-head"><h3>새로운 학습</h3></div>
+    ${drafts.length ? `<p class="subtle" style="margin:0 0 4px">${drafts.length}개 저장</p>${draftList}` : `<p class="subtle" style="margin:0">저장한 새로운 학습이 없어요.</p>`}
+    <p style="margin:26px 2px 4px;font-size:13px;font-weight:700;color:var(--ink)">마감 후에도 기록에서 새로 학습한 내용은 수정할 수 있어요.</p>
+    <p class="subtle" style="margin:0 2px 14px;font-size:11.5px">복습 체크는 마감 후에는 바꿀 수 없어요.</p>
+    <button class="btn primary full" id="finalCloseBtn">STUDY 마감하기</button>`;
+  screen('closeStudyScreen');
+  $('finalCloseBtn').onclick = async () => {
+    $('finalCloseBtn').disabled = true;
+    const { error } = await client.rpc('close_study_session', { p_session_id: session.id, p_device_id: deviceId });
+    if(error){ toast('❌ ' + error.message); screen('pageScreen'); renderToday(page); return; }
+    toast('짝꿍에게 Re:Step을 보냈어요 🌱');
+    resetStudyUiState();
+    loadPages();
+    const { data: freshPage } = await client.from('study_pages').select('*').eq('id', page.id).single();
+    screen('pageScreen');
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active', x.dataset.tab==='today'));
+    $('todayTab').style.display='block'; $('recordsTab').style.display='none'; $('statusTab').style.display='none';
+    if(freshPage){ renderToday(freshPage); }
+  };
+}
+
+// ===== 기록 탭 =====
+let recordsTabScrollY = 0; // 상세페이지 갔다가 돌아올 때 기록 목록 스크롤 위치 복원용
+async function renderRecords(page){
+  const { data: days } = await client.from('study_days').select('*, study_day_items(*)').eq('page_id', page.id).order('day_number', {ascending:false});
+  // study_days는 close_study_session에서 drafts가 있을 때만 만들어지므로, 복습만 하고 마감한
+  // 세션은 애초에 여기 안 들어옴 — 별도 필터링 불필요.
+  const { data: sessions } = await client.from('study_sessions').select('id, step_number, started_at, closed_at').eq('page_id', page.id).eq('status','closed');
+  const sessionByStep = {};
+  (sessions||[]).forEach(s => { sessionByStep[s.step_number] = s; });
+  // 복습 개수는 상세페이지와 같은 기준(이 세션에서 완료된 서로 다른 STUDY 수)으로 계산 → 목록과 상세 수치가 어긋나지 않음.
+  const sessionIds = (sessions||[]).map(x=>x.id);
+  const reviewDaysBySession = {};
+  if(sessionIds.length){
+    const { data: cps } = await client.from('review_checkpoints').select('study_day_id, completed_session_id').in('completed_session_id', sessionIds);
+    (cps||[]).forEach(c => { (reviewDaysBySession[c.completed_session_id] = reviewDaysBySession[c.completed_session_id] || new Set()).add(c.study_day_id); });
+  }
+
+  // 목록은 "한 STUDY 세션에서 무엇을 했는지" 요약만: STUDY 번호 · 기간 · 복습 수 · 새 학습 수 (개별 학습내용 힌트 없음).
+  $('recordsTab').innerHTML = (days && days.length) ? days.map(d=>{
+    const session = sessionByStep[d.created_step] || null;
+    const dateLabel = formatStudyDateRange(session, d);
+    const reviewCount = session && reviewDaysBySession[session.id] ? reviewDaysBySession[session.id].size : 0;
+    const newCount = (d.study_day_items||[]).length;
+    return `<div class="record" data-open-study="${d.id}">
+      <div class="row" style="align-items:flex-start"><div style="font-size:17px;font-weight:850;color:var(--ink)">STUDY ${d.day_number}</div><span class="rec-x" data-del-study="${d.id}" title="STUDY 삭제" aria-label="STUDY 삭제">×</span></div>
+      <div class="subtle" style="margin-top:4px;font-size:11.5px;font-weight:500">${escapeHtml(dateLabel)}</div>
+      <div class="row" style="margin-top:8px;gap:10px">
+        <div class="subtle" style="font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">복습 ${reviewCount}개 완료 · 새로운 학습 ${newCount}개</div>
+        <span style="font-size:12.5px;font-weight:700;color:var(--green-d);flex-shrink:0">보기 →</span>
+      </div>
+    </div>`;
+  }).join('') : '<div class="card"><p class="subtle" style="margin:0">아직 STUDY 기록이 없어요.</p></div>';
+
+  // × = STUDY 전체 삭제(바로 지우지 않고 기존 삭제 확인을 거침). 카드 전체 클릭(상세 열기)과 안 겹치게 전파 차단.
+  document.querySelectorAll('[data-del-study]').forEach(x => {
+    x.onclick = e => {
+      e.stopPropagation();
+      const day = days.find(d=>d.id===x.dataset.delStudy);
+      if(day) confirmDeleteDay(day, page);
+    };
+  });
+  document.querySelectorAll('[data-open-study]').forEach(el => {
+    el.onclick = () => {
+      recordsTabScrollY = window.scrollY;
+      openStudyDayDetailFromRecords(el.dataset.openStudy, page);
+    };
+  });
+}
+// 기록 목록 카드에서 상세페이지로 진입. STUDY 번호가 아니라 실제 study_day_id(PK)로 여는 게
+// 핵심 — 번호는 삭제 후 재정렬될 수 있어서 영구 식별자가 아님.
+async function openStudyDayDetailFromRecords(studyDayId, page){
+  const { data: day, error } = await client.from('study_days').select('*, study_day_items(*)').eq('id', studyDayId).single();
+  if(error || !day){ toast('❌ 해당 STUDY를 찾을 수 없어요.'); return; }
+  await renderStudyDayDetail(day, page, async () => {
+    // "←"를 누르면 기록 탭의 원래 스크롤 위치까지 복원 — 목록 맨 위가 아니라 보던 자리로.
+    screen('pageScreen');
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active', x.dataset.tab==='records'));
+    $('todayTab').style.display = 'none';
+    $('recordsTab').style.display = 'block';
+    $('statusTab').style.display = 'none';
+    await renderRecords(page);
+    window.scrollTo(0, recordsTabScrollY);
+  });
+}
+function editDayModal(day, page, onSaved){
+  const items = day.study_day_items || [];
+  const snapshot = items.map(it => ({ title: it.title||'', page_from: it.page_from||'', page_to: it.page_to||'', memo: it.memo||'' }));
+
+  function isDirty(){
+    return items.some((it,i) => {
+      const titleEl = document.querySelector(`[data-ei="${i}"][data-ek="title"]`);
+      if(!titleEl) return false;
+      const fromEl = document.querySelector(`[data-ei="${i}"][data-ek="page_from"]`);
+      const toEl = document.querySelector(`[data-ei="${i}"][data-ek="page_to"]`);
+      const memoEl = document.querySelector(`[data-ei="${i}"][data-ek="memo"]`);
+      return titleEl.value.trim() !== snapshot[i].title
+        || fromEl.value.trim() !== snapshot[i].page_from
+        || toEl.value.trim() !== snapshot[i].page_to
+        || memoEl.value.trim() !== snapshot[i].memo;
+    });
+  }
+
+  showModal(`
+   <div id="editDayForm">
+     <h3>STUDY ${day.day_number} 수정</h3>
+     <p class="subtle">수정한 내용은 앞으로의 복습에도 반영돼요.</p>
+     <div id="editDayItems">${items.map((it,i)=>`<div class="card">
+       <label>학습 내용</label><input data-ei="${i}" data-ek="title" value="${escapeHtml(it.title)}">
+       <div class="row" style="margin-top:8px"><input data-ei="${i}" data-ek="page_from" placeholder="시작 p." value="${escapeHtml(it.page_from||'')}"><input data-ei="${i}" data-ek="page_to" placeholder="끝 p." value="${escapeHtml(it.page_to||'')}"></div>
+       <label style="margin-top:8px">메모</label><textarea rows="2" data-ei="${i}" data-ek="memo">${escapeHtml(it.memo||'')}</textarea>
+     </div>`).join('')}</div>
+     <div style="position:sticky;bottom:-30px;margin:16px -18px -30px;padding:12px 18px 30px;background:#fff;border-top:1px solid var(--line)">
+       <button class="btn primary full" id="saveEditedDay">변경사항 저장</button>
+     </div>
+   </div>
+   <div id="leaveConfirmOverlay" style="display:none">
+     <h3>수정한 내용을 저장하지 않고 나갈까요?</h3>
+     <p class="subtle">저장하지 않은 변경사항은 사라져요.</p>
+     <div class="row" style="gap:8px;margin-top:14px">
+       <button class="btn secondary" style="flex:1" id="keepEditingBtn">계속 수정하기</button>
+       <button class="btn danger" style="flex:1" id="leaveWithoutSaveBtn">나가기</button>
+     </div>
+   </div>`);
+
+  // 배경 클릭으로 나가려고 할 때, 실제 값이 바뀐 경우에만 확인 절차를 가로챔.
+  // 폼 DOM은 그대로 두고 보이기/숨기기만 하므로 타이핑하던 내용은 안 사라짐.
+  modalDirtyGuard = () => {
+    if(isDirty()){
+      $('editDayForm').style.display = 'none';
+      $('leaveConfirmOverlay').style.display = 'block';
+    } else {
+      modalDirtyGuard = null; closeModal();
+    }
+  };
+  $('keepEditingBtn').onclick = () => { $('leaveConfirmOverlay').style.display = 'none'; $('editDayForm').style.display = 'block'; };
+  $('leaveWithoutSaveBtn').onclick = () => { modalDirtyGuard = null; closeModal(); };
+
+  $('saveEditedDay').onclick = async () => {
+    const grouped = {};
+    document.querySelectorAll('#editDayItems [data-ei]').forEach(inp=>{
+      const idx = +inp.dataset.ei; grouped[idx] = grouped[idx] || {}; grouped[idx][inp.dataset.ek] = inp.value.trim();
+    });
+    for(const idx in grouped){
+      const it = items[idx]; if(!it) continue;
+      await client.from('study_day_items').update(grouped[idx]).eq('id', it.id);
+    }
+    modalDirtyGuard = null;
+    closeModal(); toast('학습기록을 수정했어요.');
+    if(onSaved) await onSaved(); else renderRecords(page);
+  };
+}
+async function confirmDeleteDay(day, page, onDeleted){
+  const finish = onDeleted || (async () => {
+    const { data: freshPage } = await client.from('study_pages').select('*').eq('id', page.id).single();
+    if(freshPage) renderRecords(freshPage);
+  });
+  const { data: activeSessions } = await client.from('study_sessions').select('*').eq('page_id', page.id).eq('status','active');
+  if(activeSessions.length && activeSessions[0].queue.some(q=>q.studyDayId===day.id)){
+    showModal(`<h3>지금은 이 기록을 삭제할 수 없어요</h3>
+    <p class="subtle">STUDY ${day.day_number}는 현재 진행 중인 학습 세션의 복습 큐에 포함되어 있어요. 세션을 STUDY 마감하거나 학습취소한 뒤에 다시 삭제해주세요.</p>
+    <button class="btn secondary full" id="closeBlockedDelete">확인</button>`);
+    $('closeBlockedDelete').onclick = () => {
+      closeModal();
+      document.querySelector('.tabs button[data-tab="today"]').click();
+    };
+    return;
+  }
+  // "뒤에 이미 만들어진 STUDY"가 있으면 그 Re:Step들 번호 표시가 헷갈릴 수 있음(6번-11 참고).
+  // study_days 행은 close_study_session에서 cheer_summaries와 항상 같이 만들어지므로,
+  // "뒤에 STUDY가 존재한다" = "그 Re:Step도 이미 만들어져 있다"라 이 카운트만으로 충분함.
+  const { count: laterCount } = await client.from('study_days').select('id', { count: 'exact', head: true }).eq('page_id', page.id).gt('day_number', day.day_number);
+  const reorderNotice = laterCount > 0
+    ? '<p class="subtle">이미 만들어졌던 Re:Step들의 STUDY 번호는 기존 번호로 유지됩니다.</p>'
+    : '';
+  showModal(`<h3>이 STUDY를 삭제할까요?</h3>
+  <div class="notice danger"><b>저장한 학습 내용과 앞으로 예정된 복습도 함께 사라져요.</b></div>
+  <p class="subtle">삭제 후 뒤의 STUDY 번호는 자동으로 다시 정리됩니다.</p>
+  ${reorderNotice}
+  <div class="row" style="gap:8px"><button class="btn secondary" style="flex:1" id="cancelDeleteDay">취소</button><button class="btn danger" style="flex:1" id="yesDeleteDay">삭제</button></div>`);
+  $('yesDeleteDay').onclick = async () => {
+    await client.from('study_days').delete().eq('id', day.id);
+    const { data: remaining } = await client.from('study_days').select('*').eq('page_id', page.id).order('day_number');
+    for(let i=0;i<(remaining||[]).length;i++){
+      if(remaining[i].day_number !== i+1) await client.from('study_days').update({ day_number:i+1 }).eq('id', remaining[i].id);
+    }
+    await client.from('study_pages').update({ study_day_count:(remaining||[]).length }).eq('id', page.id);
+    closeModal(); toast('학습기록을 삭제했어요.');
+    loadPages();
+    await finish();
+  };
+  $('cancelDeleteDay').onclick = closeModal;
+}
+
+// ===== STUDY 상세페이지 =====
+// "확정된 학습 기록을 읽는 화면" — REVIEW STEP 진행상태·Re:Cheer 정보는 여기 안 넣음(4단계 요구사항).
+let studyDetailBackHandler = null;
+
+function formatKSTDate(ts){
+  return new Date(ts).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+}
+// STUDY를 만든 세션을 찾는 방법: study_days.created_step이 그 세션의 step_number를 그대로
+// 저장해둔 값이라(close_study_session 참고), page_id+step_number로 역추적함.
+// step_number는 페이지마다 세션이 마감될 때만 1씩 증가(취소된 세션은 증가 안 함)하므로 유일함.
+async function findSessionForDay(day){
+  const { data } = await client.from('study_sessions').select('id, step_number, started_at, closed_at')
+    .eq('page_id', day.page_id).eq('step_number', day.created_step).eq('status','closed').maybeSingle();
+  return data || null;
+}
+function formatStudyDateRange(session, day){
+  if(!session) return formatKSTDate(day.created_at); // 세션을 못 찾은 경우의 최소한의 대안
+  const startStr = formatKSTDate(session.started_at);
+  const endStr = formatKSTDate(session.closed_at || day.created_at);
+  if(startStr === endStr) return startStr;
+  const endShort = endStr.replace(/^\d+\.\s*/, ''); // 연도 부분 생략, "9. 7."만 남김
+  return `${startStr} ~ ${endShort}`;
+}
+
+// dayId 하나로 필요한 데이터(요약 + 페이지)를 전부 불러와서 렌더링까지 한 번에 처리.
+// backHandler: "←"를 눌렀을 때 할 일. 안 주면 기본으로 홈으로 감(12번 요구사항 — 호출부가
+// 알아서 "기록 탭으로" 등 원하는 동작을 넘겨주는 구조라 여기서 특정 화면을 강제하지 않음).
+async function renderStudyDayDetail(day, page, backHandler, targetItemId, startTab, scrollToCheer){
+  studyDetailBackHandler = backHandler || (() => { screen('homeScreen'); loadPages(); });
+  const session = await findSessionForDay(day);
+  const dateLabel = formatStudyDateRange(session, day);
+  const items = (day.study_day_items || []).slice().sort((a,b)=>(a.position||0)-(b.position||0));
+
+  // 공통 shell(sdDetailHtml)에 sage tone + "원본 기록" 깊이의 정보를 넣는다.
+  // 복습 탭: 이 세션에서 끝낸 (과거 STUDY, REVIEW STEP). 세션이 마감될 때 review_checkpoints.completed_session_id에
+  // 세션 id가 남으므로 UUID로 정확히 역추적. 과거 STUDY의 내용·페이지·메모·예정일은 안 펼침.
+  const reviewRows = [];
+  if(session){
+    const { data: cps } = await client.from('review_checkpoints').select('study_day_id, stage_index, due_step').eq('completed_session_id', session.id);
+    const byDay = {};
+    (cps||[]).forEach(c => { (byDay[c.study_day_id] = byDay[c.study_day_id] || []).push(c); });
+    const ids = Object.keys(byDay);
+    if(ids.length){
+      const { data: dayRows } = await client.from('study_days').select('id, day_number').in('id', ids);
+      const numById = Object.fromEntries((dayRows||[]).map(d=>[d.id, d.day_number]));
+      ids.filter(id=>numById[id] !== undefined).map(id => {
+        const stages = byDay[id].map(c=>c.stage_index).sort((x,y)=>x-y);
+        const names = stages.map(i=>STAGE_NAMES[i]);
+        return { n: numById[id], label: names.length>1 ? names.join(' + ')+' 통합' : names[0], deepest: Math.max(...stages),
+                 late: !byDay[id].some(c=>c.due_step === session.step_number) }; // 복습 큐의 regular 판정과 같은 기준
+      }).sort((x,y)=>y.n-x.n).forEach((r,i)=>{
+        reviewRows.push(sdRow(i+1, `<div class="rs-bt"><span class="rs-t">STUDY ${r.n}</span><span class="pill" style="background:${STAGE_COLORS[r.deepest]};color:#3d7a48">${escapeHtml(r.label)}</span>${r.late?'<span class="pill gray">밀린 복습</span>':''}</div>`));
+      });
+    }
+  }
+  const metaLine = (k, v) => `<div class="rs-meta"><span class="k">${k}</span><span class="v">${escapeHtml(v)}</span></div>`;
+  const itemRows = items.map((it, i) => {
+    const range = formatPageRange(it.page_from, it.page_to);
+    // 항목 1개만 대상으로 하는 수정/삭제(STUDY 전체 삭제는 기록 목록의 ×에서만).
+    return sdRow(i+1, `<div style="display:flex;align-items:flex-start;gap:10px"><div class="rs-t" style="flex:1;min-width:0">${escapeHtml(it.title)}</div><div class="dr-a"><span class="dr-edit" data-item-edit="${it.id}">수정</span><span class="dr-del" data-item-del="${it.id}">삭제</span></div></div>${range?metaLine('페이지', range):''}${it.memo?metaLine('메모', it.memo):''}`, `data-study-item="${it.id}"`);
+  });
+
+  // 하단 "받은 Re:Cheer": 이 세션에서 발송된 Re:Step에 도착한 응원(읽기 전용, 탭 아님). 표시 여부는 기존 관계 가시성
+  // 정책(learnerItemState) 그대로. 발송된 Re:Step 자체가 없으면 영역을 안 그림.
+  let cheerHtml = '';
+  if(session){
+    const link = await getMyConnectedLink();
+    const { data: sm } = await client.from('cheer_summaries').select('*, cheer_messages(*)').eq('session_id', session.id).maybeSingle();
+    if(sm){
+      const st = learnerItemState(sm, link);
+      const head = `<div class="section-head" style="margin-top:26px;margin-bottom:8px"><h3 style="margin:0;font-size:14px">받은 Re:Cheer</h3></div>`;
+      if(st.type === 'visible') cheerHtml = sdCheerNote('받은 Re:Cheer', st.msg.message, sdWhen(st.msg.created_at));
+      else if(st.type === 'locked') cheerHtml = `${head}<p class="subtle" style="margin:0 2px">이전 연결에서 받은 Re:Cheer예요.</p>`;
+      else cheerHtml = `${head}<p class="subtle" style="margin:0 2px">아직 받은 응원이 없어요.</p>`;
+    }
+  }
+
+  $('studyDetailBody').innerHTML = sdDetailHtml({
+    tone: 'sage', title: `${escapeHtml(page.name)} · STUDY ${day.day_number}`, dateLabel,
+    reviewCount: reviewRows.length, newCount: itemRows.length,
+    reviewPage: sdPage(`복습한 STUDY ${reviewRows.length}개`, reviewRows, '이번 STUDY에서 완료한 복습이 없어요.'),
+    newPage: sdPage(`새로운 학습 ${itemRows.length}개`, itemRows, '이 STUDY에 기록된 새 학습 항목이 없어요.')
+  }) + `<div id="sdCheer">${cheerHtml}</div><div style="height:8px"></div>`;
+  const ctl = wireSdShell($('studyDetailBody').querySelector('.sd'), 'studyDetail');
+
+  screen('studyDetailScreen');
+  enterDetailNav(studyDetailBackHandler);
+  if(startTab === 1 && !targetItemId) ctl.goTo(1);
+  if(scrollToCheer && cheerHtml) setTimeout(() => { const c = $('sdCheer'); if(c) window.scrollTo({ top: c.getBoundingClientRect().top + window.scrollY - window.innerHeight/2, behavior:'smooth' }); }, 200);
+
+  if(targetItemId){
+    ctl.goTo(1); // 메모 보기 등으로 특정 항목을 열 땐 새 학습 탭으로
+    setTimeout(() => {
+      const el = document.querySelector(`#studyDetailBody [data-study-item="${targetItemId}"]`);
+      if(!el) return;
+      const more = el.closest('.rs-more');
+      if(more && more.style.display === 'none'){ const f = more.parentElement.nextElementSibling; if(f && f.classList.contains('rs-fold')) f.click(); }
+      setTimeout(() => window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - window.innerHeight/2, behavior:'smooth' }), 80);
+    }, 500);
+  }
+
+  const refresh = async () => {
+    const { data: freshDay } = await client.from('study_days').select('*, study_day_items(*)').eq('id', day.id).single();
+    if(freshDay) await renderStudyDayDetail(freshDay, page, backHandler, null, 1);
+    renderToday(page); // 진행 중인 세션이 있으면 학습 탭의 복습 카드에도 바로 반영(없으면 시작 전 화면)
+  };
+  // 수정: 기존 STUDY 수정 UI를 그대로 쓰되 이 항목 1개만 넘김.
+  document.querySelectorAll('#studyDetailBody [data-item-edit]').forEach(el => {
+    el.onclick = () => {
+      const it = items.find(x=>x.id===el.dataset.itemEdit);
+      if(it) editDayModal({ ...day, study_day_items: [it] }, page, refresh);
+    };
+  });
+  // 삭제: 이 항목 1개만. 복습 대상 STUDY 자체는 그대로고 내용만 갱신되므로, 진행 중인 세션의 복습 큐에 있어도 허용한다
+  // (STUDY 전체 삭제는 큐의 대상 자체가 사라져서 막음). 막는 건 마지막 남은 항목뿐. 5/5 완료 STUDY는 확인 문구만 다르다.
+  document.querySelectorAll('#studyDetailBody [data-item-del]').forEach(el => {
+    el.onclick = async () => {
+      const it = items.find(x=>x.id===el.dataset.itemDel);
+      if(!it) return;
+      const blockedModal = (title, body) => {
+        showModal(`<h3>${title}</h3><p class="subtle">${body}</p><button class="btn secondary full" id="itemDelOk">확인</button>`);
+        $('itemDelOk').onclick = closeModal;
+      };
+      // 빈 STUDY는 만들지 않음
+      if(items.length <= 1){
+        blockedModal('마지막 학습 항목은 삭제할 수 없어요', '이 항목을 지우면 STUDY에 새 학습 내용이 남지 않아요. STUDY 전체를 삭제하려면 기록 목록의 ×를 이용해주세요.');
+        return;
+      }
+      // 일반 삭제 확인 — 복습이 모두 끝난 STUDY(5/5)엔 "복습" 언급을 빼고 문구만 다르게
+      const { data: cps } = await client.from('review_checkpoints').select('status').eq('study_day_id', day.id);
+      const allDone = (cps||[]).filter(c=>c.status==='done').length === 5;
+      const body = allDone
+        ? '삭제한 내용은 이후 기록에서 보이지 않아요.'
+        : '삭제한 내용은 이후 기록과 복습에서 보이지 않아요.';
+      showModal(`<h3>이 학습 항목을 삭제할까요?</h3><p class="subtle">${body}</p>
+        <div class="row" style="gap:8px;margin-top:14px"><button class="btn secondary" style="flex:1" id="itemDelCancel">취소</button><button class="btn danger" style="flex:1" id="itemDelYes">삭제</button></div>`);
+      $('itemDelCancel').onclick = closeModal;
+      $('itemDelYes').onclick = async () => {
+        const { data: gone, error } = await client.from('study_day_items').delete().eq('id', it.id).select('id');
+        if(error || !gone || !gone.length){ closeModal(); toast('❌ 삭제하지 못했어요' + (error ? ': ' + error.message : ' (권한 설정을 확인해주세요)')); return; }
+        closeModal(); toast('학습 항목을 삭제했어요.');
+        await refresh();
+      };
+    };
+  });
+}
+$('closeStudyBackBtn').onclick = () => screen('pageScreen');
+$('studyDetailBackBtn').onclick = () => goBackFromDetail(studyDetailBackHandler);
+
+// 콘솔 전용 개발 진입점(다음 단계에서 "기록" 탭 카드 → 여기, "메모 보기" → 여기 두 곳에서
+// 재사용할 예정). study_days의 실제 PK(study_day_id)로 열도록 함 — day_number는 페이지마다
+// 겹칠 수 있고 삭제로 재정렬될 수도 있어서 영구 식별자로 부적합하기 때문. 사용자 UI엔 버튼 없음.
+// 예: openStudyDayDetail('abcd-...-uuid') 또는 openStudyDayDetail('abcd-...-uuid', { targetItemId: '...' })
+window.openStudyDayDetail = async function(studyDayId, opts){
+  const targetItemId = (opts && opts.targetItemId) || null;
+  const { data: day, error } = await client.from('study_days').select('*, study_day_items(*)').eq('id', studyDayId).single();
+  if(error || !day){ console.warn('openStudyDayDetail: 해당 STUDY를 찾을 수 없어요.'); return; }
+  const { data: page, error: pageError } = await client.from('study_pages').select('*').eq('id', day.page_id).single();
+  if(pageError || !page){ console.warn('openStudyDayDetail: 페이지를 찾을 수 없어요.'); return; }
+  await renderStudyDayDetail(day, page, null, targetItemId);
+};
+
+// ===== 현황 탭 =====
+async function renderStatus(page, opts){
+  const { data: days } = await client.from('study_days').select('*, study_day_items(*)').eq('page_id', page.id).order('day_number', {ascending:false});
+  const dayIds = (days||[]).map(d=>d.id);
+  const { data: checkpoints } = dayIds.length
+    ? await client.from('review_checkpoints').select('*').in('study_day_id', dayIds)
+    : { data: [] };
+  const byDay = {};
+  (checkpoints||[]).forEach(c => { (byDay[c.study_day_id] = byDay[c.study_day_id] || []).push(c); });
+  const isComplete = d => (byDay[d.id]||[]).filter(c=>c.status==='done').length===5;
+  const total = (days||[]).length;
+  const doneDays = (days||[]).filter(isComplete);   // 둘 다 days가 STUDY 번호 내림차순이라
+  const ongoingDays = (days||[]).filter(d=>!isComplete(d)); // 필터해도 내림차순이 그대로 유지됨
+  const complete = doneDays.length;
+
+  // 학습내용 요약: 1개=그대로, 2개="A / B", 3개 이상="A / B 외 N개". 카드 높이가 학습내용 수에
+  // 따라 늘어나지 않게 한 줄 ellipsis. 실제 내용 전체는 학습 탭의 "복습할 내용"에서 봄.
+  const summarize = d => {
+    const t = (d.study_day_items||[]).slice().sort((a,b)=>(a.position||0)-(b.position||0)).map(i=>escapeHtml(i.title));
+    if(t.length <= 2) return t.join(' / ');
+    return `${t[0]} / ${t[1]} 외 ${t.length-2}개`;
+  };
+  const cardHtml = d => {
+    const cps = (byDay[d.id]||[]).sort((a,b)=>a.stage_index-b.stage_index);
+    const done = cps.filter(c=>c.status==='done').length;
+    const next = cps.find(c=>c.status!=='done');
+    return `<div class="card status-card" data-open-study="${d.id}"><div class="row" style="gap:10px"><div style="min-width:0;flex:1"><b>STUDY ${d.day_number}</b><div class="subtle" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${summarize(d)}</div></div><b style="flex-shrink:0">${done} / 5</b></div>
+      <div class="stage-row">${cps.map(c=>`<span class="stage ${c.status==='done'?'done':''}"${c.status==='done'?` style="background:${STAGE_COLORS[c.stage_index]}"`:''}>${c.status==='done'?'✓ ':''}${STAGE_NAMES[c.stage_index]}</span>`).join('')}</div>
+      <div class="subtle" style="margin-top:10px">다음: ${next?STAGE_NAMES[next.stage_index]:'모든 복습 완료'}</div></div>`;
+  };
+
+  const statsHtml = `<div class="stats">
+    <div class="stat"><span class="subtle">총 STUDY 수</span><strong>${total}</strong></div>
+    <div class="stat"><span class="subtle">복습완료 STUDY</span><strong>${complete}</strong></div>
+    <div class="stat"><span class="subtle">복습 남은 STUDY</span><strong>${total-complete}</strong></div></div>`;
+
+  if(!total){
+    $('statusTab').innerHTML = statsHtml + '<div class="card"><p class="subtle" style="margin:0">아직 학습 현황이 없어요.</p></div>';
+    return;
+  }
+
+  const ongoingHtml = ongoingDays.length
+    ? ongoingDays.map(cardHtml).join('')
+    : '<p class="subtle" style="margin:6px 2px 14px">현재 복습 중인 STUDY가 없어요.</p>';
+  // 완료 STUDY는 지우지 않고 보존하되 기본은 접힘. 접힌 아카이브 헤더 느낌(얇은 border, 배경 없음).
+  const doneHtml = complete ? `
+    <div id="statusDoneToggle" role="button" aria-expanded="false" style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding:11px 14px;border:1px solid var(--line);border-radius:14px;cursor:pointer">
+      <span style="font-size:13px;font-weight:700;color:var(--ink)">복습 완료된 STUDY <span style="font-weight:500;color:var(--muted)">${complete}개</span></span>
+      <span id="statusDoneChevron" style="font-size:13px;color:var(--muted)">⌄</span>
+    </div>
+    <div id="statusDoneList" style="display:none;margin-top:10px">${doneDays.map(cardHtml).join('')}</div>` : '';
+
+  $('statusTab').innerHTML = statsHtml +
+    '<div class="section-head"><h3>복습 중인 STUDY</h3></div>' + ongoingHtml + doneHtml;
+
+  const setDoneOpen = open => {
+    $('statusDoneList').style.display = open ? 'block' : 'none';
+    $('statusDoneChevron').textContent = open ? '⌃' : '⌄';
+    $('statusDoneToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  if(complete){
+    $('statusDoneToggle').onclick = () => setDoneOpen($('statusDoneList').style.display === 'none');
+    if(opts && opts.expandDone) setDoneOpen(true); // 상세페이지에서 돌아올 때 펼침 상태 복원
+  }
+  // 카드 전체가 STUDY 상세 진입점(진행 중/완료 동일). 번호가 아니라 실제 study_day_id로 연다.
+  document.querySelectorAll('#statusTab [data-open-study]').forEach(el => {
+    el.onclick = () => {
+      const scrollY = window.scrollY;
+      const doneList = $('statusDoneList');
+      const expandDone = !!doneList && doneList.style.display !== 'none';
+      openStudyDayDetailFromStatus(el.dataset.openStudy, page, scrollY, expandDone);
+    };
+  });
+}
+// 복습현황 → STUDY 상세. "←"로 돌아오면 같은 페이지의 복습현황 탭을 다시 그리고(수정/삭제 반영),
+// 완료 영역 펼침 상태와 스크롤 위치를 복원한다.
+async function openStudyDayDetailFromStatus(studyDayId, page, scrollY, expandDone){
+  const { data: day, error } = await client.from('study_days').select('*, study_day_items(*)').eq('id', studyDayId).single();
+  if(error || !day){ toast('❌ 해당 STUDY를 찾을 수 없어요.'); return; }
+  await renderStudyDayDetail(day, page, async () => {
+    screen('pageScreen');
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active', x.dataset.tab==='status'));
+    $('todayTab').style.display = 'none';
+    $('recordsTab').style.display = 'none';
+    $('statusTab').style.display = 'block';
+    await renderStatus(page, { expandDone });
+    window.scrollTo(0, scrollY);
+  });
+}
+
+// ===== Re:Step 현황 (학습자) =====
+async function getMyConnectedLink(){
+  const { data: links } = await client.from('cheer_links').select('*').eq('learner_user_id', currentUserId).eq('status','connected');
+  return (links && links.length) ? links[0] : null;
+}
+
+// 파트너 RLS 정책이 "연결 시점(first_connected_at) 이후 생성된 Re:Step만" 노출하도록 되어있어서
+// (의도된 설계: 연결 전엔 받아줄 상대가 없고, 밀린 과거분까지 한꺼번에 응원 대상이 되면 부담이 큼),
+// 연결 전에 만들어진 Re:Step은 영원히 응원을 받을 수 없음 → 학습자 화면에서도 아예 목록에서 제외.
+// cheer_messages.summary_id에 UNIQUE 제약이 있어서 PostgREST가 1:1 관계로 판단해
+// 배열이 아니라 단일 객체(또는 null)로 내려줌. 배열/객체/null 어떤 형태로 와도 안전하게 처리.
+// ===== Re:Step 요약(발송본) 공통 헬퍼: 전공/교과(STUDY)와 자기주도(STEP)는 같은 Re:Step이고 제목·아이콘·서브문구만 다르다 =====
+let SUMX = ''; // 3단계 SQL(자기주도 snapshot 컬럼)이 적용돼 있을 때만 select에 붙임 — 안 돼 있어도 전공/교과 화면은 그대로 동작
+async function probeSummaryCols(){
+  const { error } = await client.from('cheer_summaries').select('kind, step_number_snapshot, activity_name_snapshot, amount_snapshot').limit(1);
+  SUMX = error ? '' : ', kind, step_number_snapshot, activity_name_snapshot, amount_snapshot';
+}
+function sumLabel(s){
+  s = s || {};
+  const pg = escapeHtml(s.page_name_snapshot || '학습');
+  if(s.kind === 'self') return `${pg} · STEP ${s.step_number_snapshot}`;
+  return s.study_day_number_snapshot ? `${pg} · STUDY ${s.study_day_number_snapshot}` : `${pg} · 복습 세션`;
+}
+const sumIcon = s => `<img class="cl-ico" src="${s && s.kind === 'self' ? 'icon_sprout.png' : 'icon_book.png'}" alt="">`;
+const sumChip = ts => { // 날짜칩 2줄(11월 / 18일)
+  const dt = new Date(ts);
+  return `<div class="cl-chip"><span class="m">${dt.toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', month:'long' })}</span><span class="d">${dt.toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', day:'numeric' })}</span></div>`;
+};
+function sdSelfDetailHtml(s, title){ // 자기주도 Re:Step 상세: 복습 탭 없이 요약 카드 + 활동 상세
+  const kv = (k, v) => `<div class="kv"><div class="k">${k}</div><div class="v">${escapeHtml(v)}</div></div>`;
+  const rows = kv('활동명', s.activity_name_snapshot || '')
+    + (s.amount_snapshot ? kv('시간·횟수', s.amount_snapshot) : '')
+    + kv('인증', verifiedLabel(s.verified_snapshot))
+    + (s.memo_snapshot ? kv('메모', s.memo_snapshot) : '');
+  return `<div class="sd lav">
+    <div class="sd-sum"><h2>${title}</h2><div class="sd-date" style="margin-bottom:0">${escapeHtml(formatKSTDate(s.created_at))}</div></div>
+    <div class="section-head" style="margin:20px 0 8px"><h3 style="margin:0;font-size:14px">활동 상세</h3></div>
+    <div class="sd-act">${rows}</div>
+  </div>`;
+}
+function oneMsg(cm){
+  if(!cm) return null;
+  return Array.isArray(cm) ? (cm[0] || null) : cm;
+}
+
+function isCheerable(summary, link){
+  const msg = oneMsg(summary.cheer_messages);
+  if(msg) return true;
+  // 연결된 파트너가 없을 땐 "연결 전/후"를 판단할 기준이 없으니, 숨기지 않고
+  // 일단 대기 중으로 보여준다. (재연결되면 그때 첫 연결 시점 기준으로 재평가됨)
+  if(!link) return true;
+  return new Date(summary.created_at) >= new Date(link.first_connected_at);
+}
+
+// 연결 해제 시 "상대가 만든 콘텐츠"를 숨기기 위한 헬퍼. isCheerable()과 역할을 분리함:
+//   isCheerable(summary, link)      → 지금 관계에서 이 Re:Step이 "응원 대상"인지 판단
+//   getVisibleCheerMessage(...)     → 이미 있는 Re:Cheer를 "지금 보여줘도 되는지" 판단
+// oneMsg()는 순수 데이터 정규화만 담당하고 연결 상태는 전혀 모른다 — 책임을 섞지 않기 위함.
+// 메시지가 실제로 존재해도, 그걸 보낸 사람이 "지금 연결되어 있는 상대"와 다르면 숨긴다.
+// (같은 상대와 재연결되면 link.partner_user_id가 다시 그 사람으로 돌아오므로, 메시지의
+//  partner_user_id와 다시 일치하게 되어 별도 처리 없이 자동으로 복원됨)
+function getVisibleCheerMessage(summary, link){
+  const msg = oneMsg(summary.cheer_messages);
+  if(!msg || !link) return null;
+  return msg.partner_user_id === link.partner_user_id ? msg : null;
+}
+
+async function updateLearnerConnStatus(){
+  const el = $('learnerConnStatus');
+  if(!el) return;
+  const link = await getMyConnectedLink();
+  el.style.cursor = 'pointer';
+  el.onclick = () => openConnectionSettings();
+  if(link){
+    const profile = await fetchProfile(link.partner_user_id);
+    el.innerHTML = `<span class="conn-meta">${escapeHtml(labelFor(profile))}님과 연결됨</span>`; // 정상 연결은 조용하게(metadata)
+  } else {
+    el.innerHTML = `<span class="mini-status warn">아직 연결된 응원 파트너가 없어요 · 연결하기 →</span>`;
+  }
+}
+
+async function loadReceivedCheers(){
+  const listEl = $('receivedCheerList');
+  if(!listEl) return; // 홈에서 Re:Step 현황 영역을 뺐음(데이터/함수는 유지)
+  const link = await getMyConnectedLink();
+  const { data: raw, error } = await client
+    .from('cheer_summaries')
+    .select('*, cheer_messages(*)')
+    .eq('learner_user_id', currentUserId)
+    .order('created_at', { ascending: false })
+    .limit(30);
+  if(error){ listEl.textContent = '❌ ' + error.message; return; }
+  // 응원 가능성 정책은 그대로 적용한 뒤 최신순 최대 3건. (정책으로 걸러지는 게 있어도 3건이 채워지도록 넉넉히 읽어옴)
+  const data = (raw || []).filter(s => isCheerable(s, link)).slice(0, 3);
+  // 홈에서는 "최근 기록 묶음"처럼 compact하게: 식별 + 핵심 Re:Cheer + 날짜(초 없이)만.
+  listEl.innerHTML = (data && data.length) ? data.map(s => {
+    const label = sumLabel(s);
+    const state = learnerItemState(s, link); // isCheerable로 이미 걸러진 목록이라 'none'은 나오지 않음
+    const msgHtml = state.type === 'visible'
+      ? `<div class="rc-m">${escapeHtml(state.msg.message)}</div>`
+      : state.type === 'locked'
+        ? `<div class="rc-m sub">🔒 이전 연결에서 받은 Re:Cheer</div>`
+        : `<div class="rc-m sub">⏳ 응원 대기 중</div>`;
+    const when = new Date(s.created_at).toLocaleString('ko-KR', { timeZone:'Asia/Seoul', month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' });
+    return `<div class="rc-card"><div class="rc-t">${label}</div>${msgHtml}<div class="rc-d">${when}</div></div>`;
+  }).join('') : `<div class="subtle">아직 보낸 Re:Step이 없어요.</div>`;
+}
+// ===== 월별 기록 모달 공통 헬퍼 =====
+function addMonths(y, m, delta){
+  const total = y * 12 + m + delta;
+  return { y: Math.floor(total / 12), m: ((total % 12) + 12) % 12 };
+}
+function inMonth(dateStr, y, m){
+  const d = new Date(dateStr);
+  return d.getFullYear() === y && d.getMonth() === m;
+}
+
+// 학습자 월별 기록에서 각 Re:Step 항목의 표시 상태 판정.
+// visible: 지금 연결된 상대가 보낸 응원이 있음 → 실제 메시지 표시
+// pending: 응원은 아직 없지만 지금 관계 기준으로는 응원 대상임 → "응원 대기 중"
+// locked : 응원은 있었지만 지금 연결과 다른(과거) 상대가 보낸 것 → 내용 숨김
+// none   : 연결 전에 만들어져 지금 관계의 응원 대상이 아니고, 응원도 없음 → 표시 없음
+function learnerItemState(s, link){
+  const rawMsg = oneMsg(s.cheer_messages);
+  const shown = getVisibleCheerMessage(s, link);
+  if(shown) return { type: 'visible', msg: shown };
+  if(rawMsg) return { type: 'locked' };
+  if(isCheerable(s, link)) return { type: 'pending' };
+  return { type: 'none' };
+}
+
+let learnerRecordCache = [];
+let learnerRecordLink = null;
+let learnerRecordViewYM = null;
+async function openLearnerRecordModal(initialYM){
+  const link = await getMyConnectedLink();
+  const { data: raw, error } = await client
+    .from('cheer_summaries')
+    .select('*, cheer_messages(*)')
+    .eq('learner_user_id', currentUserId)
+    .order('created_at', { ascending: false });
+  if(error){ toast('❌ ' + error.message); return; }
+  learnerRecordCache = raw || []; // 내가 만든 기록 → 연결 여부와 무관하게 전부 보존
+  learnerRecordLink = link;
+  const now = new Date();
+  learnerRecordViewYM = initialYM || { y: now.getFullYear(), m: now.getMonth() };
+  $('modal').classList.add('show');
+  renderLearnerRecordModal();
+}
+function renderLearnerRecordModal(){
+  const { y, m } = learnerRecordViewYM;
+  const data = learnerRecordCache;
+  const link = learnerRecordLink;
+  const monthItems = data.filter(s => inMonth(s.created_at, y, m));
+  const stepCount = monthItems.length; // 내가 만든 것 → 무조건 전부 집계
+  const cheerCount = data.filter(s => {
+    const state = learnerItemState(s, link);
+    return state.type === 'visible' && inMonth(state.msg.created_at, y, m);
+  }).length; // 지금 보이는 응원만 집계 (연결 끊긴 과거 응원은 제외)
+
+  const now = new Date();
+  const earliest = data.length ? new Date(data[data.length - 1].created_at) : now;
+  const canPrev = (y > earliest.getFullYear()) || (y === earliest.getFullYear() && m > earliest.getMonth());
+  const canNext = (y < now.getFullYear()) || (y === now.getFullYear() && m < now.getMonth());
+
+  const listHtml = monthItems.length ? monthItems.map(s=>{
+    const label = sumLabel(s);
+    const state = learnerItemState(s, link);
+    let bodyHtml = '';
+    if(state.type === 'visible') bodyHtml = `<p>"${escapeHtml(state.msg.message)}"</p>`;
+    else if(state.type === 'pending') bodyHtml = `<p class="subtle" style="margin:5px 0 0">⏳ 응원 대기 중</p>`;
+    else if(state.type === 'locked') bodyHtml = `<p class="subtle" style="margin:5px 0 0">🔒 이전 연결에서 받은 Re:Cheer</p>`;
+    return `<div class="card record rose"><b>${label}</b>${bodyHtml}<div class="subtle">${new Date(s.created_at).toLocaleString('ko-KR')}</div></div>`;
+  }).join('') : '<p class="subtle" style="text-align:center;margin:18px 0">이 달엔 기록이 없어요.</p>';
+
+  $('sheet').innerHTML = `
+    <div class="row" style="margin-bottom:10px">
+      <button id="recordPrevBtn" class="smallbtn" ${canPrev?'':'disabled'}>◀</button>
+      <h3 style="margin:0">${y}년 ${m+1}월 기록</h3>
+      <button id="recordNextBtn" class="smallbtn" ${canNext?'':'disabled'}>▶</button>
+    </div>
+    <div class="stat-split">
+      <div class="stat-chip green"><span class="stat-label">기록한 Re:Step</span><span class="stat-num">${stepCount}개</span></div>
+      <div class="stat-chip lav"><span class="stat-label">받은 Re:Cheer</span><span class="stat-num">${cheerCount}개</span></div>
+    </div>
+    ${listHtml}
+    <button id="closeHistory" class="btn secondary full" style="margin-top:14px">닫기</button>`;
+  $('closeHistory').onclick = closeModal;
+  if(canPrev) $('recordPrevBtn').onclick = () => { learnerRecordViewYM = addMonths(y, m, -1); renderLearnerRecordModal(); };
+  if(canNext) $('recordNextBtn').onclick = () => { learnerRecordViewYM = addMonths(y, m, 1); renderLearnerRecordModal(); };
+}
+
+// ===== Re:Cheer 연결 (파트너 쪽 뷰) =====
+// Re:Cheer 메인 = "받은편지함": 아직 Re:Cheer를 보내지 않은 Re:Step만. 보내고 나면 여기서 빠지고 달력 기록(Re:Cheer 기록)에서 본다.
+// 캐릭터 영역은 상태와 무관하게 같은 높이로 고정(GIF가 바뀌어도 아래 내용이 안 움직임).
+const CS_GIF_EMPTY = 'restep_empty.webp';     // 도착한 Re:Step 없음 — 편지를 기다리는 캐릭터
+const CS_GIF_ARRIVED = 'restep_arrived.webp'; // 도착한 Re:Step 있음 — 편지가 와서 기뻐하는 캐릭터
+async function loadCheerSection(){
+  const uid = currentUserId;
+  const { data: links, error } = await client.from('cheer_links').select('*').eq('partner_user_id', uid);
+  if(error){ $('partnerBody').textContent = '❌ ' + error.message; return; }
+  const connected = (links||[]).filter(l => l.status==='connected');
+
+  if(!connected.length){
+    // 연결 전 메인: 강아지 + 한 줄 안내 + 응원 파트너 되기 카드(제목·입력·버튼만). 요청 대기/취소 UI는 두지 않는다.
+    $('partnerBody').innerHTML = `
+      <div class="cs-stage wait"><img src="restep_waiting.webp" alt=""></div>
+      <div class="cs-status soft">아직 연결된 학습자가 없어요.</div>
+      <div class="cs-sub">초대코드를 입력해 연결 요청을 보내보세요.</div>
+      <div class="cw-card">
+        <div class="cw-head"><img class="cw-ico" src="icon_link_purple.png" alt=""><div class="cw-title">응원 파트너 되기</div></div>
+        <input id="partnerCodeInput" class="cw-input" placeholder="상대방 초대코드 입력" autocomplete="off">
+        <button class="cw-btn" id="sendPartnerRequest">연결 요청</button>
+      </div>`;
+    $('sendPartnerRequest').onclick = async () => {
+      const code = $('partnerCodeInput').value.trim();
+      if(!code){ toast('코드를 입력해주세요.'); return; }
+      const { error } = await client.rpc('request_partner_connection', { p_code: code });
+      if(error){ toast('❌ ' + error.message); return; }
+      toast('연결 요청을 보냈어요.');
+      $('partnerCodeInput').value = '';
+      loadCheerSection();
+    };
+    return;
+  }
+
+  const learnerProfile = await fetchProfile(connected[0].learner_user_id);
+  const name = escapeHtml(labelFor(learnerProfile));
+  let { data: summaries, error: sErr } = await client.from('cheer_summaries')
+    .select(`id, created_at, page_name_snapshot, study_day_number_snapshot, review_completed_count${SUMX}, cheer_messages(id), cheer_summary_items(id)`)
+    .eq('learner_user_id', connected[0].learner_user_id).order('created_at', {ascending:false});
+  if(sErr){
+    console.warn('받은편지함 상세 조회 실패, 기본 조회로 대체:', sErr.message);
+    ({ data: summaries } = await client.from('cheer_summaries').select('id, created_at, page_name_snapshot, study_day_number_snapshot, review_completed_count').eq('learner_user_id', connected[0].learner_user_id).order('created_at', {ascending:false}));
+  }
+  const pending = (summaries||[]).filter(sm => !oneMsg(sm.cheer_messages)); // 아직 답장 안 한 Re:Step만
+
+  const cardRows = pending.map(sm => { // 최신순(조회 시 정렬), 5개까지 보여주고 나머지는 "더 보기"
+
+    const label = sumLabel(sm);
+    const newCount = Array.isArray(sm.cheer_summary_items) ? sm.cheer_summary_items.length : null;
+    const meta = sm.kind === 'self'
+      ? escapeHtml(sm.activity_name_snapshot || '') + (sm.amount_snapshot ? ' · ' + escapeHtml(sm.amount_snapshot) : '') // 자기주도: 활동명 · 시간/횟수(없으면 활동명만)
+      : `복습 ${sm.review_completed_count}개` + (newCount !== null ? ` · 새로운 학습 ${newCount}개` : ''); // 실제 데이터만(자연어 요약 없음)
+    // 카드 구조: [날짜칩][영역 아이콘][제목/서브문구] › — 같은 날짜여도 카드마다 날짜칩 반복
+    return `<div class="cl-card chip" data-summary-id="${sm.id}">${sumChip(sm.created_at)}${sumIcon(sm)}<div class="cl-b"><div class="cl-t">${label}</div><div class="cl-m">${meta}</div></div><span class="cl-c">›</span></div>`;
+  });
+  const arrived = pending.length > 0;
+  $('partnerBody').innerHTML = `
+    <div class="cs-stage"><img src="${arrived ? CS_GIF_ARRIVED : CS_GIF_EMPTY}" alt=""></div>
+    <div class="cs-status">${arrived ? '새로운 Re:Step이 도착했어요!' : '지금은 도착한 Re:Step이 없어요.'}</div>
+    <div id="partnerSummaryList">${arrived ? sdFoldList(cardRows, 5) : `<div class="cs-slot"><div>${name}님의 Re:Step이 도착하면 여기에서 확인하고<br>Re:Cheer로 응원할 수 있어요.</div></div>`}</div>
+    <div class="${arrived ? 'conn-meta' : 'cs-conn'}" style="text-align:center;${arrived ? 'margin-top:18px' : ''}">${name}님과 연결됨</div>`;
+  document.querySelectorAll('#partnerSummaryList [data-summary-id]').forEach(el => { el.onclick = () => openSummary(el.dataset.summaryId); });
+  document.querySelectorAll('#partnerSummaryList .rs-fold').forEach(f => {
+    f.onclick = () => {
+      const more = f.previousElementSibling.querySelector('.rs-more');
+      const open = more.style.display === 'none';
+      more.style.display = open ? 'block' : 'none';
+      f.textContent = open ? '접기 ⌃' : `외 ${f.dataset.more}개 더 보기 ⌄`;
+    };
+  });
+}
+// 학습자 쪽 getMyConnectedLink()의 파트너 버전. cheer_summaries는 RLS SELECT 정책이
+// "본인 학습자" / "연결된 파트너" 두 개가 OR로 합쳐지는 구조라(6번-4 버그 참고),
+// 파트너 시점 조회 시 반드시 learner_user_id를 명시적으로 필터해야 자기 자신 요약과
+// 안 섞임 → 그러려면 지금 연결된 학습자 id를 먼저 알아야 해서 이 헬퍼가 필요함.
+async function getMyPartnerLink(){
+  const { data: links } = await client.from('cheer_links').select('*').eq('partner_user_id', currentUserId).eq('status', 'connected');
+  return (links && links.length) ? links[0] : null;
+}
+
+let partnerRecordCache = { messages: [], summaries: [] };
+let partnerRecordViewYM = null;
+let partnerRecordTab = 'cheer'; // 'cheer' = 보낸 Re:Cheer(기본), 'step' = 받은 Re:Step. 월만 바꿀 땐 유지.
+// ===== Re:Cheer 기록 = "내가 보낸 답장의 달력" =====
+// 달력에는 Re:Cheer를 보낸 날짜만 점으로 표시(Re:Step 도착일은 표시 안 함). 날짜를 고르면 그날 보낸 Re:Cheer 카드만 보이고,
+// 카드를 누르면 Re:Step + 보낸 Re:Cheer가 함께 보이는 상세(archive mode)로 간다. 받은/보낸 탭 없음.
+let cheerCal = { y: 0, m: 0, sel: null, messages: [] };
+const kstKey = ts => new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); // YYYY-MM-DD (KST)
+const pad2 = n => String(n).padStart(2, '0');
+function calLatestSelInMonth(y, m){
+  const prefix = `${y}-${pad2(m+1)}-`;
+  const days = cheerCal.messages.map(c=>kstKey(c.created_at)).filter(k=>k.startsWith(prefix)).sort();
+  return days.length ? days[days.length-1] : null;
+}
+// 이번 달이면 오늘을 선택, 다른 달이면 그 달의 가장 최근 전송일(없으면 선택 없음)
+function calDefaultSel(y, m){
+  const t = kstKey(Date.now());
+  if(y === +t.slice(0,4) && m === +t.slice(5,7) - 1) return t;
+  return calLatestSelInMonth(y, m);
+}
+async function openPartnerRecordModal(initialYM){
+  closeModal(); // 월간 리캡 모달 등에서 넘어올 때
+  // "보낸 Re:Cheer"는 내가 만든 것이라 연결 여부와 무관하게 항상 볼 수 있다.
+  const { data: messages, error } = await client
+    .from('cheer_messages')
+    .select(`*, cheer_summaries(page_name_snapshot, study_day_number_snapshot, created_at${SUMX})`)
+    .eq('partner_user_id', currentUserId)
+    .order('created_at', { ascending: false });
+  if(error){ toast('❌ ' + error.message); return; }
+  cheerCal.messages = messages || [];
+  const todayKey = kstKey(Date.now());
+  let y = +todayKey.slice(0,4), m = +todayKey.slice(5,7) - 1; // 항상 이번 달(리캡 등에서 월을 지정해 오면 그 달)
+  if(initialYM){ y = initialYM.y; m = initialYM.m; }
+  cheerCal.y = y; cheerCal.m = m;
+  cheerCal.sel = calDefaultSel(y, m);
+  renderCheerCalendar();
+  screen('cheerRecordScreen');
+  enterDetailNav(() => { screen('homeScreen'); setRole('partner'); loadCheerSection(); });
+}
+// 카드용 한 줄 요약: 공백/줄바꿈 정리 후 15자(이모지는 1자) 초과 시 말줄임
+function cheerOneLine(text, max=15){
+  const chars = Array.from(String(text||'').replace(/\s+/g,' ').trim());
+  return chars.length > max ? chars.slice(0, max).join('').trimEnd() + '...' : chars.join('');
+}
+function renderCheerCalendar(){
+  const { y, m, sel, messages } = cheerCal;
+  const byDay = {};
+  messages.forEach(c => { (byDay[kstKey(c.created_at)] = byDay[kstKey(c.created_at)] || []).push(c); });
+  const todayKey = kstKey(Date.now());
+  const nowY = +todayKey.slice(0,4), nowM = +todayKey.slice(5,7) - 1;
+  const earliest = messages.length ? kstKey(messages[messages.length-1].created_at) : todayKey;
+  const eY = +earliest.slice(0,4), eM = +earliest.slice(5,7) - 1;
+  const canPrev = y > eY || (y === eY && m > eM);
+  const canNext = y < nowY || (y === nowY && m < nowM);
+
+  const firstDow = new Date(Date.UTC(y, m, 1)).getUTCDay();
+  const dim = new Date(Date.UTC(y, m+1, 0)).getUTCDate();
+  let cells = '';
+  for(let i=0;i<firstDow;i++) cells += '<div class="cc-cell"></div>';
+  for(let d=1; d<=dim; d++){
+    const key = `${y}-${pad2(m+1)}-${pad2(d)}`;
+    const has = !!byDay[key];
+    cells += `<div class="cc-cell"><button class="cc-day${key===sel?' sel':''}${key===todayKey?' today':''}${has?' has':''}" data-day="${key}"><span>${d}</span>${has?'<i class="cc-dot"></i>':''}</button></div>`;
+  }
+  const dow = ['일','월','화','수','목','금','토'].map(x=>`<div class="cc-dow">${x}</div>`).join('');
+
+  const dayMsgs = sel && byDay[sel] ? byDay[sel].slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)) : [];
+  const listHtml = dayMsgs.length ? dayMsgs.map(c => {
+    const s = c.cheer_summaries;
+    const label = sumLabel(s);
+    // 카드 = 빠른 훑어보기: 날짜칩(Re:Step 도착일) · 영역 아이콘 · 학습 영역+STUDY/STEP/복습 세션 · 내가 보낸 Re:Cheer 한 줄. 세부 내용·전체 문구는 상세에서.
+    return `<div class="cl-card chip" data-open-summary="${c.summary_id}">${sumChip(s?.created_at || c.created_at)}${sumIcon(s)}<div class="cl-b"><div class="cl-t">${label}</div><div class="cl-m cl-one">${escapeHtml(cheerOneLine(c.message))}</div></div><span class="cl-c">›</span></div>`;
+  }).join('') : `<p class="cs-hint" style="margin:18px 0">${sel ? '이날 보낸 Re:Cheer가 없어요.' : '이 달에 보낸 Re:Cheer가 없어요.'}</p>`;
+
+  $('cheerRecordBody').innerHTML = `
+    <div class="row" style="margin:6px 0 12px"><button id="calPrev" class="smallbtn" ${canPrev?'':'disabled'}>◀</button><h3 style="margin:0">${y}년 ${m+1}월</h3><button id="calNext" class="smallbtn" ${canNext?'':'disabled'}>▶</button></div>
+    <div class="cc-grid">${dow}${cells}</div>
+    <div style="margin-top:18px">${listHtml}</div>`;
+
+  $('calPrev').onclick = () => { const r = addMonths(y, m, -1); cheerCal.y = r.y; cheerCal.m = r.m; cheerCal.sel = calDefaultSel(r.y, r.m); renderCheerCalendar(); };
+  $('calNext').onclick = () => { const r = addMonths(y, m, 1); cheerCal.y = r.y; cheerCal.m = r.m; cheerCal.sel = calDefaultSel(r.y, r.m); renderCheerCalendar(); };
+  document.querySelectorAll('#cheerRecordBody .cc-day').forEach(b => { b.onclick = () => { cheerCal.sel = b.dataset.day; renderCheerCalendar(); }; });
+  document.querySelectorAll('#cheerRecordBody [data-open-summary]').forEach(el => {
+    el.onclick = () => {
+      const saved = { y: cheerCal.y, m: cheerCal.m, sel: cheerCal.sel, scrollY: window.scrollY };
+      openSummary(el.dataset.openSummary, { archive: true, onBack: () => restoreCheerCalendar(saved) });
+    };
+  });
+}
+function restoreCheerCalendar(saved){
+  setRole('partner');
+  cheerCal.y = saved.y; cheerCal.m = saved.m; cheerCal.sel = saved.sel;
+  renderCheerCalendar();
+  screen('cheerRecordScreen');
+  enterDetailNav(() => { screen('homeScreen'); setRole('partner'); loadCheerSection(); });
+  setTimeout(() => window.scrollTo(0, saved.scrollY || 0), 30);
+}
+$('calBtn').onclick = () => openPartnerRecordModal();
+$('cheerRecordBackBtn').onclick = () => goBackFromDetail(() => { screen('homeScreen'); loadCheerSection(); });
+
+// ===== 월간 리포트 (월말 회고 경험) =====
+// 기존 월별 기록 모달(위)은 "아카이브"로 그대로 유지. 이건 그거랑 별개로,
+// "매달 한 번 짧게 돌아보는" 용도의 새 화면. 오늘 정한 연결 해제 정책(getVisibleCheerMessage)을
+// 그대로 재사용해서 숫자를 구하되, 상세 목록/◀▶ 페이지네이션은 만들지 않음(그건 아카이브 몫).
+async function getLearnerMonthlyStats(y, m){
+  const link = await getMyConnectedLink();
+  const { data: raw } = await client
+    .from('cheer_summaries')
+    .select('*, cheer_messages(*)')
+    .eq('learner_user_id', currentUserId);
+  const data = raw || [];
+  const stepCount = data.filter(s => inMonth(s.created_at, y, m)).length; // 내가 만든 것 → 무조건 집계
+  const cheerCount = data.filter(s => {
+    const msg = getVisibleCheerMessage(s, link);
+    return msg && inMonth(msg.created_at, y, m);
+  }).length; // 지금 보이는 응원만
+  return { stepCount, cheerCount };
+}
+async function getPartnerMonthlyStats(y, m){
+  const link = await getMyPartnerLink();
+  const { data: messages } = await client.from('cheer_messages').select('*').eq('partner_user_id', currentUserId);
+  const sentCount = (messages || []).filter(c => inMonth(c.created_at, y, m)).length; // 내가 보낸 것 → 무조건 집계
+  let receivedCount = 0;
+  if(link){
+    const { data: summaries } = await client.from('cheer_summaries').select('id, created_at').eq('learner_user_id', link.learner_user_id);
+    receivedCount = (summaries || []).filter(s => inMonth(s.created_at, y, m)).length;
+  } // 링크 없으면 0 — 상대가 만든 것이라 연결 끊기면 숨김
+  return { receivedCount, sentCount };
+}
+
+// ===== 함께한 걸음 (공동 누적 지표) =====
+// Re:Step + Re:Cheer가 완성된 1쌍 = +1. learnerId가 만들고 partnerId가 응원한 것만 카운트.
+async function countCompletedSteps(learnerId, partnerId){
+  const { data } = await client.from('cheer_summaries').select('id, cheer_messages(*)').eq('learner_user_id', learnerId);
+  return (data || []).filter(s => {
+    const msg = oneMsg(s.cheer_messages);
+    return msg && msg.partner_user_id === partnerId;
+  }).length;
+}
+// 현재 '연결된(status=connected)' 관계만 대상 — 연결 해제되면 그 상대와의 함께한 걸음은
+// 화면에서 사라지고, 새 상대와 합산되지도 않는다(오늘 정한 정책과 동일한 원칙).
+// 학습자 역할 상대와 파트너 역할 상대가 같은 사람이면(mutual) 두 방향을 합산해서 하나로 보여줌.
+async function getMyRelationships(){
+  const uid = currentUserId;
+  const [{ data: asLearner }, { data: asPartner }] = await Promise.all([
+    client.from('cheer_links').select('*').eq('learner_user_id', uid).eq('status', 'connected'),
+    client.from('cheer_links').select('*').eq('partner_user_id', uid).eq('status', 'connected')
+  ]);
+  const learnerLink = (asLearner && asLearner[0]) || null; // 내가 학습자인 연결 (상대 = 나의 응원 파트너)
+  const partnerLink = (asPartner && asPartner[0]) || null; // 내가 파트너인 연결 (상대 = 나의 학습자)
+  const mutual = learnerLink && partnerLink && learnerLink.partner_user_id === partnerLink.learner_user_id;
+
+  const results = [];
+  if(mutual){
+    const [mine, theirs] = await Promise.all([
+      countCompletedSteps(uid, learnerLink.partner_user_id),
+      countCompletedSteps(partnerLink.learner_user_id, uid)
+    ]);
+    const profile = await fetchProfile(learnerLink.partner_user_id);
+    results.push({ name: labelFor(profile), mine, theirs, total: mine + theirs, mutual: true });
+  } else {
+    if(learnerLink){
+      const [mine, profile] = await Promise.all([
+        countCompletedSteps(uid, learnerLink.partner_user_id),
+        fetchProfile(learnerLink.partner_user_id)
+      ]);
+      results.push({ name: labelFor(profile), mine, theirs: 0, total: mine, mutual: false, role: 'asLearner' });
+    }
+    if(partnerLink){
+      const [theirs, profile] = await Promise.all([
+        countCompletedSteps(partnerLink.learner_user_id, uid),
+        fetchProfile(partnerLink.learner_user_id)
+      ]);
+      results.push({ name: labelFor(profile), mine: 0, theirs, total: theirs, mutual: false, role: 'asPartner' });
+    }
+  }
+  return results;
+}
+function renderRelationshipBlock(r){
+  const breakdown = r.mutual
+    ? `<div class="subtle" style="margin-top:8px;font-size:11px;line-height:1.7">내 Re:Step + ${escapeHtml(r.name)}님의 Re:Cheer ${r.mine}<br>${escapeHtml(r.name)}님의 Re:Step + 내 Re:Cheer ${r.theirs}</div>`
+    : (r.role === 'asLearner'
+      ? `<div class="subtle" style="margin-top:8px;font-size:11px">내 Re:Step + ${escapeHtml(r.name)}님의 Re:Cheer</div>`
+      : `<div class="subtle" style="margin-top:8px;font-size:11px">${escapeHtml(r.name)}님의 Re:Step + 내 Re:Cheer</div>`);
+  return `<div style="text-align:center;margin-bottom:20px">
+    <div style="font-weight:900;font-size:15px">🌱 ${escapeHtml(r.name)}님과 함께한 걸음 ${r.total}</div>
+    ${breakdown}
+  </div>`;
+}
+
+// 콘솔 전용 개발 진입점. 사용자 UI엔 버튼/메뉴를 추가하지 않음 — 테스트가 끝나도 화면엔 그대로
+// 노출되지 않음. month는 1~12(사람이 읽는 월) 그대로 받고 내부에서만 0-index로 변환.
+// 예: openMonthlyRecap(2026, 9) → 2026년 9월 (내부에서만 m=8로 계산됨)
+async function openMonthlyRecap(year, month){
+  if(month < 1 || month > 12){
+    console.warn('openMonthlyRecap: month는 1~12 사이(사람이 읽는 월)여야 해요. 예: openMonthlyRecap(2026, 9) → 2026년 9월');
+    return;
+  }
+  const y = year, m = month - 1;
+  const [learnerStats, partnerStats, relationships] = await Promise.all([
+    getLearnerMonthlyStats(y, m),
+    getPartnerMonthlyStats(y, m),
+    getMyRelationships()
+  ]);
+  renderMonthlyRecap(y, m, learnerStats, partnerStats, relationships);
+}
+// 실제 월말 알림을 눌렀을 때의 흐름 검증용 — "지금" 날짜 기준 지난달을 자동 계산해서 엶.
+// (연도 경계도 자동 처리됨: 1월에 호출하면 작년 12월로 넘어감 — addMonths가 이미 처리)
+async function openPreviousMonthRecap(){
+  const now = new Date();
+  const prev = addMonths(now.getFullYear(), now.getMonth(), -1);
+  const [learnerStats, partnerStats, relationships] = await Promise.all([
+    getLearnerMonthlyStats(prev.y, prev.m),
+    getPartnerMonthlyStats(prev.y, prev.m),
+    getMyRelationships()
+  ]);
+  renderMonthlyRecap(prev.y, prev.m, learnerStats, partnerStats, relationships);
+}
+// classic <script>라 사실 전역 함수는 이미 window에 붙지만, 의도를 명확히 하려고 명시적으로도 노출.
+window.openMonthlyRecap = openMonthlyRecap;
+window.openPreviousMonthRecap = openPreviousMonthRecap;
+function renderMonthlyRecap(y, m, learnerStats, partnerStats, relationships){
+  const relHtml = (relationships && relationships.length)
+    ? `<p style="text-align:center;font-weight:800;margin-bottom:14px">그리고 우리는 지금까지</p>${relationships.map(renderRelationshipBlock).join('')}`
+    : `<p style="text-align:center;margin:10px 0 4px">🌱 아직 함께한 걸음이 없어요.</p>`;
+  $('sheet').innerHTML = `
+    <h3 style="text-align:center;margin-bottom:2px">📮 ${y}년 ${m+1}월의 기록</h3>
+    <p class="subtle" style="text-align:center;margin-bottom:20px">한 달을 짧게 돌아봐요</p>
+
+    <div class="subtle" style="font-weight:850;margin-bottom:6px">학습자로서</div>
+    <div class="stat-split" style="margin-bottom:2px">
+      <div class="stat-chip green"><span class="stat-label">기록한 Re:Step</span><span class="stat-num">${learnerStats.stepCount}개</span></div>
+      <div class="stat-chip lav"><span class="stat-label">받은 Re:Cheer</span><span class="stat-num">${learnerStats.cheerCount}개</span></div>
+    </div>
+    <button class="recap-link green" id="recapLearnerDetail">Re:Step 기록 자세히 보기 →</button>
+
+    <div class="subtle" style="font-weight:850;margin:18px 0 6px">응원 파트너로서</div>
+    <div class="stat-split" style="margin-bottom:2px">
+      <div class="stat-chip green"><span class="stat-label">받은 Re:Step</span><span class="stat-num">${partnerStats.receivedCount}개</span></div>
+      <div class="stat-chip lav"><span class="stat-label">보낸 Re:Cheer</span><span class="stat-num">${partnerStats.sentCount}개</span></div>
+    </div>
+    <button class="recap-link lav" id="recapPartnerDetail">Re:Cheer 기록 자세히 보기 →</button>
+
+    <div style="border-top:1px dashed var(--line);margin:22px 0 20px"></div>
+    ${relHtml}
+
+    <button class="btn secondary full" id="closeRecap" style="margin-top:8px">닫기</button>`;
+  $('modal').classList.add('show');
+  $('closeRecap').onclick = closeModal;
+  $('recapLearnerDetail').onclick = () => openLearnerRecordModal({ y, m });
+  $('recapPartnerDetail').onclick = () => openPartnerRecordModal({ y, m });
+}
+
+const DEFAULT_QUICK_CHEERS = ['오늘도 성공! 🌱','사랑해! 💗','멋져요 하뚜 💜','오늘도 수고했어 😊','아주 잘했어! 👍'];
+async function getQuickCheers(){
+  let { data } = await client.from('quick_cheers').select('*').eq('user_id', currentUserId).order('position');
+  if(!data || !data.length){
+    const rows = DEFAULT_QUICK_CHEERS.map((text,i)=>({ user_id: currentUserId, text, position:i }));
+    await client.from('quick_cheers').insert(rows);
+    ({ data } = await client.from('quick_cheers').select('*').eq('user_id', currentUserId).order('position'));
+  }
+  return data || [];
+}
+
+// 파트너가 이 Re:Step을 한 번이라도 열어본 적 있는지 추적(새 Re:Step 배지용).
+// "새로 도착했는가"와 "아직 응원 안 했는가"는 다른 상태라서 따로 관리함 — 계정이 아니라
+// 이 브라우저 기준(localStorage), lastSeenCheer와 같은 방식.
+function openedSummariesKey(){ return 'restep-opened-summaries-' + currentUserId; }
+function isSummaryOpened(id){
+  try{ return JSON.parse(localStorage.getItem(openedSummariesKey()) || '[]').includes(id); }
+  catch(e){ return false; }
+}
+function markSummaryOpened(id){
+  try{
+    const list = JSON.parse(localStorage.getItem(openedSummariesKey()) || '[]');
+    if(!list.includes(id)){ list.push(id); localStorage.setItem(openedSummariesKey(), JSON.stringify(list)); }
+  } catch(e){ /* 실패해도 기능엔 지장 없음 — 그냥 계속 새 걸로 보일 뿐 */ }
+}
+// ===== 공통 상세 UI shell =====
+// 학습자 "기록 상세"(tone='sage')와 파트너 "Re:Step 상세"(tone='lav')는 같은 부품을 쓰고, tone과 안에 넣는
+// 정보의 깊이만 다르다: 요약 카드 → 복습|새 학습 인덱스 → 가로 swipe 카드 → dots → (호출부가 붙이는) Re:Cheer/액션.
+// 한쪽 디자인을 고치면 다른 쪽도 같이 바뀌도록 이 부품들만 수정할 것.
+const SD_COLLAPSE_AT = 3;
+function sdRow(n, bodyHtml, attrs){ return `<div class="rs-row"${attrs?' '+attrs:''}><span class="rs-n">${n}</span><div class="rs-b">${bodyHtml}</div></div>`; }
+function sdFoldList(rows, limit){ // 기본 3개까지 노출, 넘으면 "외 N개 더 보기"로 같은 자리에서 펼침
+  const lim = limit || SD_COLLAPSE_AT;
+  const shown = rows.slice(0, lim).join('');
+  const hidden = rows.slice(lim).join('');
+  if(!hidden) return `<div class="rs-list">${shown}</div>`;
+  const n = rows.length - lim;
+  return `<div class="rs-list">${shown}<div class="rs-more" style="display:none">${hidden}</div></div><div class="rs-fold" data-more="${n}">외 ${n}개 더 보기 ⌄</div>`;
+}
+function sdPage(headTitle, rows, emptyText){
+  return rows.length ? `<div class="rs-h">${headTitle}</div>${sdFoldList(rows)}` : `<p class="subtle" style="margin:4px 0">${emptyText}</p>`;
+}
+function sdCheerNote(label, message, whenStr){
+  return `<div class="section-head" style="margin-top:26px;margin-bottom:8px"><h3 style="margin:0;font-size:14px">${label}</h3></div><div class="cheer-note"><div class="t">${escapeHtml(message)}</div><div class="d">${whenStr}</div></div>`;
+}
+function sdWhen(ts){ return new Date(ts).toLocaleString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' }); }
+function sdDetailHtml({ tone, title, dateLabel, reviewCount, newCount, reviewPage, newPage }){
+  return `<div class="sd ${tone}">
+    <div class="sd-sum"><h2>${title}</h2>${dateLabel?`<div class="sd-date">${escapeHtml(dateLabel)}</div>`:''}
+      <div class="row"><b>복습</b><strong>${reviewCount}개 완료</strong></div>
+      <div class="row" style="margin-top:6px"><b>새로운 학습</b><strong>${newCount}개</strong></div></div>
+    <div class="rs-tabs"><button class="active">복습</button><button>새 학습</button></div>
+    <div class="rs-card"><div class="rs-viewport"><div class="rs-page">${reviewPage}</div><div class="rs-page">${newPage}</div></div></div>
+    <div class="rs-dots"><span class="on"></span><span></span></div>
+  </div>`;
+}
+const sdCleanups = {};
+// 인덱스 탭 / swipe / dots는 같은 "현재 페이지" 상태를 공유. swipe는 CSS scroll-snap(모바일), 마우스는 드래그,
+// 높이는 현재 페이지 내용에 맞춤. 반환값: { goTo }
+function wireSdShell(root, key, onChange){
+  if(sdCleanups[key]) sdCleanups[key]();
+  const vp = root.querySelector('.rs-viewport');
+  const pages = [...vp.children];
+  const tabs = [...root.querySelectorAll('.rs-tabs button, .sa-tabs button')];
+  const dots = [...root.querySelectorAll('.rs-dots span')];
+  let active = 0, lock = false, lockTimer = null, drag = null;
+  const syncHeight = () => { vp.style.height = pages[active].offsetHeight + 'px'; };
+  const setActive = i => {
+    active = i;
+    tabs.forEach((t,k)=>t.classList.toggle('active', k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on', k===i));
+    syncHeight();
+    if(onChange) onChange(i);
+  };
+  const jump = i => { // 애니메이션 없이 바로 이동(다시 그린 뒤 보던 탭 복원용)
+    setActive(i);
+    vp.style.scrollSnapType = 'none'; vp.scrollLeft = i * vp.clientWidth;
+    requestAnimationFrame(() => { vp.style.scrollSnapType = ''; });
+  };
+  const goTo = i => {
+    setActive(i);
+    lock = true; clearTimeout(lockTimer);
+    vp.scrollTo({ left: i*vp.clientWidth, behavior: 'smooth' });
+    lockTimer = setTimeout(()=>{ lock = false; }, 450);
+  };
+  tabs.forEach((t,k)=>{ t.onclick = () => goTo(k); });
+  vp.addEventListener('scroll', () => {
+    if(lock) return;
+    const i = Math.round(vp.scrollLeft / vp.clientWidth);
+    if(i !== active && i >= 0 && i < pages.length) setActive(i);
+  });
+  let ro = null;
+  let lastW = 0;
+  const onResize = () => { // 높이는 현재 페이지에 맞추고, 화면 폭이 바뀌었거나 숨겨졌다 나타났다면 현재 탭 위치를 다시 맞춤
+    syncHeight();
+    if(vp.clientWidth && vp.clientWidth !== lastW){ lastW = vp.clientWidth; if(!lock && !drag) vp.scrollLeft = active * vp.clientWidth; }
+  };
+  if(window.ResizeObserver){ ro = new ResizeObserver(onResize); pages.forEach(pg=>ro.observe(pg)); ro.observe(vp); }
+  requestAnimationFrame(syncHeight);
+  vp.addEventListener('pointerdown', e => {
+    if(e.pointerType !== 'mouse' || e.button !== 0 || vp.classList.contains('noswipe')) return;
+    drag = { x: e.clientX, left: vp.scrollLeft };
+    vp.style.scrollSnapType = 'none'; vp.classList.add('dragging');
+  });
+  const onMove = e => { if(drag) vp.scrollLeft = drag.left - (e.clientX - drag.x); };
+  const endDrag = e => {
+    if(!drag) return;
+    const dx = e.clientX - drag.x; drag = null;
+    vp.style.scrollSnapType = ''; vp.classList.remove('dragging');
+    goTo(Math.max(0, Math.min(pages.length-1, active + (dx < -40 ? 1 : dx > 40 ? -1 : 0))));
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+  sdCleanups[key] = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', endDrag); window.removeEventListener('pointercancel', endDrag); if(ro) ro.disconnect(); };
+  root.querySelectorAll('.rs-fold').forEach(f => {
+    f.onclick = () => {
+      const more = f.previousElementSibling.querySelector('.rs-more');
+      const open = more.style.display === 'none';
+      more.style.display = open ? 'block' : 'none';
+      f.textContent = open ? '접기 ⌃' : `외 ${f.dataset.more}개 더 보기 ⌄`;
+    };
+  });
+  return { goTo, jump };
+}
+
+// opts.archive: 월간 "보낸 Re:Cheer" 기록에서 다시 연 과거 Re:Step(읽기 전용, Re:Cheer 작성 UI 없음).
+// opts.onBack: "←"를 눌렀을 때 돌아갈 곳(호출부가 넘김). 내용은 항상 발송 당시 snapshot
+// (cheer_summaries / cheer_summary_items / cheer_summary_reviews)에서만 읽으므로, 이후 원본
+// STUDY가 수정·삭제·재정렬돼도 안 바뀐다. 개인 메모와 REVIEW STEP은 원래 snapshot에 없음.
+let summaryBackHandler = null;
+async function openSummary(summaryId, opts){
+  const archive = !!(opts && opts.archive);
+  const learnerView = !!(opts && opts.learnerView); // 학습자가 자기 Re:Step snapshot을 읽기 전용으로 열 때(복습-only 세션 등)
+  const readOnly = archive || learnerView;
+  summaryBackHandler = (opts && opts.onBack) || null;
+  activeSummaryId = summaryId;
+  const { data: s, error } = await client.from('cheer_summaries').select('*, cheer_messages(*)').eq('id', summaryId).single();
+  if(error || !s){
+    toast('이 Re:Step은 현재 연결 관계에서 확인할 수 없어요.');
+    if(summaryBackHandler) summaryBackHandler(); else screen('homeScreen');
+    return false;
+  }
+  markSummaryOpened(summaryId);
+  const { data: items } = await client.from('cheer_summary_items').select('*').eq('summary_id', summaryId).order('position');
+  const { data: reviews } = await client.from('cheer_summary_reviews').select('*').eq('summary_id', summaryId).order('study_day_number').order('stage_index');
+  const title = sumLabel(s);
+  let existingMsg = oneMsg(s.cheer_messages);
+  let learnerState = null;
+  if(learnerView){ // 학습자는 기존 관계 가시성 정책(learnerItemState)대로만 받은 응원을 봄
+    learnerState = learnerItemState(s, await getMyConnectedLink());
+    existingMsg = learnerState.type === 'visible' ? learnerState.msg : null;
+  }
+  const quickList = (existingMsg || readOnly) ? [] : await getQuickCheers();
+  const normPage = v => (!v || v === 'EMPTY') ? '' : v;
+  // 파트너에겐 "무엇을 복습했는지"만 보임 — 1차복습 같은 REVIEW STEP, 밀림, 메모는 노출 안 함(공통 shell에 넣는 정보가 얕을 뿐).
+  // cheer_summary_reviews엔 STUDY 번호만 저장돼 있어서(내용 스냅샷 없음) 지금은 STUDY 번호만 표시.
+  const reviewedDays = [...new Set((reviews||[]).map(r=>r.study_day_number))].sort((x,y)=>y-x);
+  const reviewRows = reviewedDays.map((n,i) => sdRow(i+1, `<div class="rs-t">STUDY ${n}</div>`));
+  const itemRows = (items||[]).map((it,i) => {
+    const range = formatPageRange(normPage(it.page_from_snapshot), normPage(it.page_to_snapshot));
+    return sdRow(i+1, `<div class="rs-t">${escapeHtml(it.title_snapshot)}</div>${range?`<div class="rs-s">${escapeHtml(range)}</div>`:''}`);
+  });
+  const reviewEmpty = s.review_completed_count>0 ? '이전 Re:Step이라 복습한 내용이 자세히 남아있지 않아요.' : '이번 Re:Step에는 복습한 STUDY가 없어요.';
+  const detailHtml = (s.kind === 'self') ? sdSelfDetailHtml(s, title) : sdDetailHtml({
+    tone: 'lav', title, dateLabel: formatKSTDate(s.created_at), // 파트너는 학습 기간을 읽을 수 없어 Re:Step이 만들어진 날짜를 표시
+    reviewCount: s.review_completed_count, newCount: itemRows.length,
+    reviewPage: sdPage(`복습한 STUDY ${reviewRows.length}개`, reviewRows, reviewEmpty),
+    newPage: sdPage(`새로운 학습 ${itemRows.length}개`, itemRows, '이번 Re:Step에는 새로운 학습이 없어요.')
+  });
+  $('summaryDetail').innerHTML = detailHtml + `
+    ${learnerView
+      ? (existingMsg
+          ? sdCheerNote('받은 Re:Cheer', existingMsg.message, sdWhen(existingMsg.created_at))
+          : `<div class="section-head" style="margin-top:26px;margin-bottom:8px"><h3 style="margin:0;font-size:14px">받은 Re:Cheer</h3></div><p class="subtle" style="margin:0 2px">${learnerState.type==='locked' ? '이전 연결에서 받은 Re:Cheer예요.' : '아직 받은 응원이 없어요.'}</p>`)
+      : existingMsg
+      ? sdCheerNote('보낸 Re:Cheer', existingMsg.message, sdWhen(existingMsg.created_at))
+      : archive
+      ? `<p class="subtle" style="margin:18px 2px 4px">보낸 Re:Cheer가 없어요.</p>`
+      : `<div class="section-head" style="margin-top:0"><h3>빠른 응원 문구</h3></div>
+         <div class="quick" id="quickCheerGrid">${quickList.map((q,i)=>`<button data-quick-index="${i}">${escapeHtml(q.text)}</button>`).join('')}<button id="addQuickBtn">＋ 문구 추가</button></div>
+         <div class="section-head"><h3>직접 쓰기</h3></div>
+         <textarea id="cheerMsg" rows="3" placeholder="응원 메시지를 직접 적어보세요."></textarea>
+         <button class="btn purple full" id="sendCheerBtn" style="margin-top:12px">Re:Cheer 보내기 💌</button>`}`;
+  if(s.kind !== 'self') wireSdShell($('summaryDetail').querySelector('.sd'), 'summary');
+
+  if(!existingMsg && !readOnly){
+    document.querySelectorAll('[data-quick-index]').forEach(b=>b.onclick=()=>{
+      document.querySelectorAll('[data-quick-index]').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      $('cheerMsg').value = '';
+      $('cheerMsg').dataset.selected = quickList[+b.dataset.quickIndex].text;
+    });
+    $('cheerMsg').oninput = () => { document.querySelectorAll('[data-quick-index]').forEach(x=>x.classList.remove('selected')); $('cheerMsg').dataset.selected=''; };
+    $('addQuickBtn').onclick = () => {
+      showModal(`<h3>빠른 응원 문구 추가</h3><input id="newQuickText" placeholder="응원 문구"><button id="saveQuickText" class="btn purple full" style="margin-top:10px">추가</button>`);
+      $('saveQuickText').onclick = async () => {
+        const v = $('newQuickText').value.trim();
+        if(v){ await client.from('quick_cheers').insert({ user_id: currentUserId, text: v, position: quickList.length }); }
+        closeModal();
+        openSummary(summaryId, { onBack: summaryBackHandler }); // 다시 그려도 돌아갈 곳(원래 하던 화면)을 잃지 않게
+      };
+    };
+  }
+
+  if($('sendCheerBtn')) $('sendCheerBtn').onclick = async () => {
+    const msg = $('cheerMsg').value.trim() || $('cheerMsg').dataset.selected || '';
+    if(!msg){ toast('응원 문구를 선택하거나 작성해주세요.'); return; }
+    const { error } = await client.from('cheer_messages').insert({ summary_id: summaryId, partner_user_id: currentUserId, message: msg });
+    if(error){ toast('❌ ' + error.message); return; }
+    toast('Re:Cheer가 전달됐어요 💌');
+    // 뒤로가기(←)와 같은 경로로 돌아간다: 앱 밖 푸시로 들어왔다면 원래 하던 화면, 파트너 홈에서 열었다면 파트너 홈.
+    goBackFromDetail(() => { screen('homeScreen'); loadCheerSection(); });
+    loadCheerSection(); // 숨은 상태여도 파트너 홈 목록은 최신으로
+  };
+  screen('summaryScreen');
+  enterDetailNav(() => { if(summaryBackHandler) summaryBackHandler(); else { screen('homeScreen'); loadCheerSection(); } });
+  return true; // 상세가 정상적으로 열림(알림 읽음 처리 판단용)
+}
+$('summaryBackBtn').onclick = () => goBackFromDetail(() => { screen('homeScreen'); loadCheerSection(); });
+
+// ===== 알림 벨 =====
+// ── 앱 안 알림 읽음 상태(알림 단위, 이 브라우저 기준 localStorage) ──
+// 목록을 열거나 화면에 보이기만 해서는 읽음 처리 안 함. 알림을 눌러 상세가 실제로 열린 뒤에만 그 알림 하나만 읽음.
+// id: 'cheer:<summary_id>'(학습자가 받은 Re:Cheer), 'step:<summary_id>'(파트너가 받은 Re:Step). 앱 밖 푸시를 눌러 들어가도
+// 같은 라우터를 거치므로 대응되는 앱 안 알림이 함께 읽음 처리된다.
+function notifReadKey(){ return 'restep-notif-read-' + currentUserId; }
+function getNotifRead(){ try{ return new Set(JSON.parse(localStorage.getItem(notifReadKey()) || '[]')); }catch(e){ return new Set(); } }
+function markNotifRead(id){
+  try{
+    const set = getNotifRead(); set.add(id);
+    localStorage.setItem(notifReadKey(), JSON.stringify([...set].slice(-300)));
+  }catch(e){}
+  updateNotifBadge();
+}
+function lastSeenKey(){ return 'restep-last-seen-cheer-' + currentUserId; }
+function getLastSeenCheer(){ return localStorage.getItem(lastSeenKey()) || '1970-01-01T00:00:00Z'; }
+function setLastSeenCheerNow(){ localStorage.setItem(lastSeenKey(), new Date().toISOString()); }
+
+let notifBadgeToken = 0;
+function hideNotifBadge(){ for(const id of ['notifBadge','areaNotifBadge']){ const b = $(id); b.textContent = ''; b.style.display = 'none'; } }
+async function updateNotifBadge(){
+  const uid = currentUserId;
+  if(!uid) return;
+  const role = currentRole;
+  const token = ++notifBadgeToken; // 역할을 바꾸는 사이 늦게 끝난 이전 계산 결과가 배지를 덮어쓰지 않게
+  // 알림(🔔)은 학습자 화면에만 있다. 응원 파트너 화면에는 🔔이 없으니 계산하지 않고 배지를 비운다
+  // (예전엔 파트너로 볼 때도 숨겨진 🔔 배지에 새 Re:Step 수를 써둬서, 학습자로 돌아올 때 그 숫자가 잠깐 보였다 사라졌음).
+  if(role !== 'learner'){ hideNotifBadge(); return; }
+  let count = 0;
+  const { data: learnerLinks } = await client.from('cheer_links').select('*').eq('learner_user_id', uid).eq('status','requested');
+  count += (learnerLinks||[]).length;
+
+  // 학습자로서 "새로 받은 Re:Cheer" — 지금 연결된 파트너가 보낸 것만 카운트.
+  // (필터 없이 세면, 연결 끊긴 과거 파트너가 예전에 보낸 메시지가 배지에 뒤늦게 잡힐 수 있음)
+  const myLearnerLink = await getMyConnectedLink();
+  if(myLearnerLink){
+    const lastSeen = getLastSeenCheer();
+    const { data: newCheers } = await client
+      .from('cheer_messages')
+      .select('*, cheer_summaries!inner(learner_user_id)')
+      .eq('cheer_summaries.learner_user_id', uid)
+      .eq('partner_user_id', myLearnerLink.partner_user_id)
+      .gt('created_at', lastSeen);
+    const readC = getNotifRead();
+    count += (newCheers||[]).filter(c=>!readC.has('cheer:'+c.summary_id)).length;
+  }
+
+  if(token !== notifBadgeToken || currentRole !== role) return; // 그 사이 역할이 바뀌었으면 이 결과는 버림
+  const badge = $('notifBadge');
+  badge.textContent = count>9 ? '9+' : String(count);
+  badge.style.display = count>0 ? 'flex' : 'none';
+  const ab = $('areaNotifBadge'); ab.textContent = badge.textContent; ab.style.display = badge.style.display; // 목차 화면 header 알림 배지도 같은 값
+}
+// 알림 안에서 바로 수락/거절하는 연결 요청 카드. 이미 다른 파트너와 연결돼 있으면
+// 바로 수락할 수 없으니 그 경우만 "연결 관계 관리"로 보냄(기존 화면 재사용, 새 화면 안 만듦).
+async function renderNotifIncomingCard(link, alreadyConnected){
+  const requesterProfile = await fetchProfile(link.partner_user_id);
+  return connReqCardHtml({
+    name: labelFor(requesterProfile),
+    cardAttr: `data-request-card="${link.id}"`,
+    rejectAttr: `data-reject-request="${link.id}"`,
+    acceptAttr: alreadyConnected ? '' : `data-accept-request="${link.id}"`,
+    blockedBtn: `<button class="cx-btn sec" data-manage-request="${link.id}">연결 관계 관리</button>`,
+    note: alreadyConnected ? '이미 연결된 파트너가 있어 바로 연결할 수 없어요.' : ''
+  });
+}
+async function openNotifModal(restoreScroll){
+  const uid = currentUserId;
+  // 알림함은 지금 보고 있는 역할의 알림만 보여준다: 학습자 = 연결 요청 + 받은 Re:Cheer, 응원 파트너 = 새 Re:Step.
+  const role = currentRole;
+  const { data: learnerLinks } = role === 'learner' ? await client.from('cheer_links').select('*').eq('learner_user_id', uid).eq('status','requested') : { data: [] };
+  const { data: partnerLinks } = role === 'partner' ? await client.from('cheer_links').select('*').eq('partner_user_id', uid).eq('status','connected') : { data: [] };
+  let pendingSummaries = [];
+  if((partnerLinks||[]).length){
+    const { data: summaries } = await client.from('cheer_summaries').select('*, cheer_messages(*)').eq('learner_user_id', partnerLinks[0].learner_user_id).order('created_at', {ascending:false});
+    // 이미 열어본(읽은) Re:Step은 알림함에서 빠진다. 아직 응원 안 한 건 응원 파트너 홈의 Re:Cheer 현황에 계속 남아 있음.
+    const readStep = getNotifRead();
+    pendingSummaries = (summaries||[]).filter(s=>!oneMsg(s.cheer_messages) && !readStep.has('step:'+s.id));
+  }
+  // 지금 연결된 파트너가 보낸 것만 — 연결 끊긴 과거 파트너의 메시지가 알림 목록에 뒤늦게 튀어나오지 않도록
+  const myLearnerLink = role === 'learner' ? await getMyConnectedLink() : null;
+  let newCheers = [];
+  if(myLearnerLink){
+    const lastSeen = getLastSeenCheer();
+    const { data } = await client
+      .from('cheer_messages')
+      .select(`*, cheer_summaries!inner(page_name_snapshot, study_day_number_snapshot, learner_user_id${SUMX})`)
+      .eq('cheer_summaries.learner_user_id', uid)
+      .eq('partner_user_id', myLearnerLink.partner_user_id)
+      .gt('created_at', lastSeen)
+      .order('created_at', {ascending:false});
+    // 열어본(읽은) Re:Cheer는 알림함에서 빠진다(해당 STUDY 기록 상세의 '받은 Re:Cheer'에서 계속 확인 가능).
+    const readSet0 = getNotifRead();
+    newCheers = (data || []).filter(c => !readSet0.has('cheer:'+c.summary_id));
+  }
+
+  // 알림함 = 정보 중심의 간결한 목록(캐릭터 없음). 카드 전체가 눌리고, 오른쪽 ›는 눌린다는 표시일 뿐.
+  const ntIcon = s => (s && s.kind === 'self') ? 'icon_sprout_small.png' : 'icon_book_small.png';
+  const ntCard = (attr, id, s, line) => `<div class="nt-card" ${attr}="${id}"><img class="nt-ico" src="${ntIcon(s)}" alt=""><div class="nt-b"><div class="nt-t">${sumLabel(s)}</div><div class="nt-s">${line}</div></div><svg class="nt-chev" viewBox="0 0 24 24" fill="none" stroke="#a49cbd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>`;
+  let html = `<h3 style="margin-bottom:14px">알림</h3>`;
+  if((learnerLinks||[]).length){
+    const cards = await Promise.all((learnerLinks||[]).map(link => renderNotifIncomingCard(link, !!myLearnerLink)));
+    html += cards.join('');
+  }
+  if(pendingSummaries.length){
+    html += pendingSummaries.map(s => ntCard('data-notif-summary', s.id, s, '아직 응원을 안 보냈어요.')).join('');
+  }
+  if(newCheers.length){
+    html += newCheers.map(c => ntCard('data-notif-cheer', c.summary_id, c.cheer_summaries, `"${escapeHtml(c.message)}"`)).join('');
+  }
+  if(!(learnerLinks||[]).length && !pendingSummaries.length && !newCheers.length) html += '<p class="subtle">새 알림이 없어요.</p>';
+  html += `<button id="closeNotif" class="nt-close">닫기</button>`;
+  showModal(html);
+  $('sheet').style.background = '#fffdf8'; // 알림함은 따뜻한 크림 바탕
+  // 알림을 눌러 들어간 상세에서 ←를 누르면 이 알림함으로(보던 스크롤 위치까지) 돌아온다.
+  // 읽음 처리는 handleNotificationTarget이 상세가 실제로 열린 뒤에 그 알림만 처리.
+  const openFromBell = (target, el) => {
+    const savedScroll = $('sheet').scrollTop, role = currentRole;
+    closeModal();
+    handleNotificationTarget(target, { onBack: () => { setRole(role); screen('homeScreen'); openNotifModal(savedScroll); } });
+  };
+  document.querySelectorAll('[data-notif-summary]').forEach(el=>{
+    el.onclick = () => openFromBell({ type: 'restep', summary_id: el.dataset.notifSummary }, el);
+  });
+  document.querySelectorAll('[data-notif-cheer]').forEach(el=>{
+    el.onclick = () => openFromBell({ type: 're_cheer', summary_id: el.dataset.notifCheer }, el);
+  });
+  document.querySelectorAll('[data-accept-request]').forEach(btn=>{
+    btn.onclick = async () => {
+      const linkId = btn.dataset.acceptRequest;
+      const { error } = await client.rpc('accept_partner_connection', { p_link_id: linkId });
+      if(error){ toast('❌ ' + error.message); return; }
+      toast('연결됐어요 💜');
+      document.querySelector(`[data-request-card="${linkId}"]`)?.remove();
+      updateNotifBadge();
+      updateLearnerConnStatus();
+      loadReceivedCheers();
+    };
+  });
+  document.querySelectorAll('[data-reject-request]').forEach(btn=>{
+    btn.onclick = async () => {
+      const linkId = btn.dataset.rejectRequest;
+      const { error } = await client.from('cheer_links').delete().eq('id', linkId);
+      if(error){ toast('❌ ' + error.message); return; }
+      toast('요청을 거절했어요.');
+      document.querySelector(`[data-request-card="${linkId}"]`)?.remove();
+      updateNotifBadge();
+    };
+  });
+  document.querySelectorAll('[data-manage-request]').forEach(btn=>{
+    btn.onclick = () => { closeModal(); openConnectionSettings(); };
+  });
+  updateNotifBadge();
+  $('closeNotif').onclick = closeModal;
+  if(restoreScroll) requestAnimationFrame(() => { $('sheet').scrollTop = restoreScroll; });
+}
+$('notifBtn').onclick = () => openNotifModal();
+
+// ===== 도움말 =====
+function showHelpModal(){
+  showModal(`<h3>Re:Step 도움말</h3><div class="help-list">
+   <div class="help-item"><b>학습 페이지</b><p class="subtle">공부 영역을 나누어 관리해요. 예: 전공 / 교육학</p></div>
+   <div class="help-item"><b>STUDY</b><p class="subtle">새 학습이 있을 때만 증가해요. 복습만 한 세션에서는 증가하지 않습니다.</p></div>
+   <div class="help-item"><b>복습 단계</b><p class="subtle">1차복습 → 2차복습 → 3차복습 → 장기복습1 → 장기복습2 순으로 자동 관리돼요.</p></div>
+   <div class="help-item"><b>복습카드</b><p class="subtle">학습페이지별 한 학습 세션에 최대 10개. 정규복습을 먼저 배정하고 남는 자리에 밀린복습을 넣어요.</p></div>
+   <div class="help-item"><b>Re:Cheer</b><p class="subtle">응원 파트너는 Re:Step을 보고 응원만 보낼 수 있어요. 학습기록을 수정할 수 없습니다.</p></div>
+  </div><button id="closeHelp" class="btn secondary full">닫기</button>`);
+  $('closeHelp').onclick = closeModal;
+}
+
+// ===== 푸시 알림 =====
+const VAPID_PUBLIC_KEY = 'BHCRhvWkDw9hShCu9bEP0ETRa7bTjRIeylLPpx-WyQPrSCj1cDWpbt9pyAOth_7Pb37xuJr0YMffu8eyD0hsT2A';
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+async function getCurrentPushSubscription(){
+  try{
+    if(!('serviceWorker' in navigator)) return null;
+    const reg = await navigator.serviceWorker.getRegistration();
+    if(!reg) return null;
+    return await reg.pushManager.getSubscription();
+  }catch(e){ return null; }
+}
+async function enablePush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    toast('이 브라우저/환경은 푸시 알림을 지원하지 않아요.');
+    return false;
+  }
+  try{
+    const reg = await navigator.serviceWorker.register('sw.js');
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ toast('알림 권한이 거부됐어요.'); return false; }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    const json = sub.toJSON();
+    const { error } = await client.from('push_subscriptions').upsert({
+      user_id: currentUserId, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth
+    }, { onConflict: 'endpoint' });
+    if(error){ toast('❌ ' + error.message); return false; }
+    toast('알림이 켜졌어요 🔔');
+    return true;
+  }catch(e){
+    toast('❌ ' + e.message);
+    return false;
+  }
+}
+async function disablePush(sub){
+  try{
+    const endpoint = sub.endpoint;
+    await sub.unsubscribe();
+    await client.from('push_subscriptions').delete().eq('endpoint', endpoint);
+    toast('알림을 껐어요.');
+  }catch(e){
+    toast('❌ ' + e.message);
+  }
+}
+
+// ===== 설정 모달 =====
+// 연결 요청 카드 — 연결 관계 관리 / 앱 내 알림이 같은 모양·같은 request 데이터를 쓴다.
+// opts: { name, rejectAttr, acceptAttr(없으면 수락 불가), blockedBtn(수락 불가일 때 거절 옆 버튼 HTML), note, cardAttr }
+function connReqCardHtml(o){
+  const acceptBtn = o.acceptAttr ? `<button class="cx-btn pri" ${o.acceptAttr}>연결하기</button>` : (o.blockedBtn||'');
+  return `<div class="cx-card" ${o.cardAttr||''}>
+    <div class="cx-head"><img class="cx-ico" src="icon_link.png" alt="">
+      <div class="cx-b"><div class="cx-h">응원 파트너 연결 요청</div>
+      <div class="cx-s">${escapeHtml(o.name)}님이 응원 파트너가 되고 싶어해요.${o.note?`<br>${o.note}`:''}</div></div></div>
+    <div class="cx-act"><button class="cx-btn sec" ${o.rejectAttr}>거절</button>${acceptBtn}</div>
+  </div>`;
+}
+function labelFor(profile){ return profile?.display_name || profile?.invite_code || '상대방'; }
+async function fetchProfile(userId){
+  const { data, error } = await client.from('profiles').select('display_name, invite_code').eq('id', userId).single();
+  if(error) console.warn('fetchProfile 실패:', error.message);
+  return data;
+}
+
+$('settingsBtn').onclick = () => openSettingsMenu();
+function openSettingsMenu(){
+  showModal(`<h3>설정</h3>
+    <div class="stack">
+      <button class="btn secondary full" id="menuAccount">계정</button>
+      <button class="btn secondary full" id="menuConnection">연결 관계 관리</button>
+      <button class="btn secondary full" id="menuNotif">알림</button>
+      <button class="btn secondary full" id="menuHelp">도움말</button>
+      <button class="btn secondary full" id="menuTestRecap">🧪 월간 리포트 미리보기 (테스트용, 나중에 제거)</button>
+    </div>
+    <button class="btn danger full" id="settingsLogout" style="margin-top:16px">로그아웃</button>`);
+  $('menuAccount').onclick = () => openAccountSettings();
+  $('menuConnection').onclick = () => openConnectionSettings();
+  $('menuNotif').onclick = () => openNotifSettings();
+  $('menuHelp').onclick = () => { closeModal(); setTimeout(showHelpModal, 150); };
+  $('menuTestRecap').onclick = () => {
+    const now = new Date();
+    const input = window.prompt('테스트할 연-월 (예: 2026-9)', `${now.getFullYear()}-${now.getMonth()+1}`);
+    if(!input) return;
+    const [yy, mm] = input.split('-').map(Number);
+    if(!yy || !mm || mm < 1 || mm > 12){ toast('연-월 형식으로 입력해주세요 (예: 2026-9)'); return; }
+    closeModal();
+    setTimeout(() => openMonthlyRecap(yy, mm), 150);
+  };
+  $('settingsLogout').onclick = async () => { closeModal(); await client.auth.signOut(); };
+}
+
+async function openAccountSettings(){
+  const { data: profile } = await client.from('profiles').select('display_name').eq('id', currentUserId).single();
+  showModal(`<button class="smallbtn" id="backToMenu">← 뒤로</button>
+    <h3 style="margin-top:10px">계정</h3>
+    <div class="input-group"><label>내 이름</label><input id="editDisplayName" value="${escapeHtml(profile?.display_name||'')}" placeholder="이름 또는 별명"></div>
+    <button class="btn primary full" id="saveDisplayName">저장</button>
+    <p style="font-size:10px;color:#c8c3b6;text-align:center;margin-top:18px;user-select:all">사용자 ID: ${currentUserId}</p>`);
+  $('backToMenu').onclick = openSettingsMenu;
+  $('saveDisplayName').onclick = async () => {
+    const name = $('editDisplayName').value.trim();
+    if(!name){ toast('이름을 입력해주세요.'); return; }
+    const { error } = await client.from('profiles').update({ display_name: name }).eq('id', currentUserId);
+    if(error){ toast('❌ ' + error.message); return; }
+    toast('저장했어요.');
+    updateLearnerConnStatus();
+  };
+}
+
+async function openConnectionSettings(highlight){
+  const uid = currentUserId;
+  const { data: asLearner } = await client.from('cheer_links').select('*').eq('learner_user_id', uid);
+  const { data: asPartner } = await client.from('cheer_links').select('*').eq('partner_user_id', uid);
+  const { data: myProfile } = await client.from('profiles').select('invite_code').eq('id', uid).single();
+  const incoming = (asLearner||[]).filter(l=>l.status==='requested');
+  const learnerLink = (asLearner||[]).find(l=>l.status==='connected');
+  const partnerLink = (asPartner||[]).find(l=>l.status==='connected');
+  const mutual = learnerLink && partnerLink && learnerLink.partner_user_id === partnerLink.learner_user_id;
+
+  let learnerProfile=null, partnerProfile=null;
+  if(learnerLink) learnerProfile = await fetchProfile(learnerLink.partner_user_id);
+  if(partnerLink) partnerProfile = await fetchProfile(partnerLink.learner_user_id);
+  // 연결 요청 카드에 '누군가' 대신 요청한 사람의 이름을 보여주기 위해 요청자 프로필을 미리 조회
+  const incomingProfile = incoming.length ? await fetchProfile(incoming[0].partner_user_id) : null;
+
+  let html = `<button class="smallbtn" id="backToMenu">← 뒤로</button><h3 style="margin-top:10px">연결 관계 관리</h3>`;
+
+  // 연결 해제 알림을 타고 들어온 경우 — 제목(무엇이 바뀌었나)+설명(어느 방향이 사라졌나) 2단으로 안내.
+  // 같은 상대와 반대 방향 연결이 아직 살아있으면 "해제"가 아니라 "변경"으로 구분해서,
+  // 관계 전체가 끝난 것처럼 오해하지 않게 함.
+  if(highlight && highlight.linkId){
+    const { data: deadLink } = await client.from('cheer_links').select('*').eq('id', highlight.linkId).single();
+    if(deadLink){
+      const counterpartId = highlight.role === 'learner' ? deadLink.partner_user_id : deadLink.learner_user_id;
+      const counterpartProfile = await fetchProfile(counterpartId);
+      const name = escapeHtml(counterpartProfile?.display_name || '상대방');
+      const otherActive = highlight.role === 'learner'
+        ? !!(partnerLink && partnerLink.learner_user_id === counterpartId)
+        : !!(learnerLink && learnerLink.partner_user_id === counterpartId);
+      const noticeTitle = otherActive ? `${name}님과의 응원 관계가 변경되었어요` : `${name}님과의 연결이 해제되었어요`;
+      const noticeDesc = highlight.role === 'learner'
+        ? `${name}님은 이제 내 Re:Step을 받지 않아요.`
+        : `이제 ${name}님의 Re:Step을 받을 수 없어요.`;
+      html += `<div style="background:#f5f2ec;border:1px solid var(--line);border-radius:17px;padding:15px;margin-bottom:14px">
+        <div style="font-size:14.5px;font-weight:850">${noticeTitle}</div>
+        <div class="subtle" style="margin-top:6px;font-size:12px">${noticeDesc}</div>
+      </div>`;
+    }
+  }
+
+  // 상태 전환: 요청 없음 → 내 초대코드 / 요청 도착 → 요청 카드가 초대코드 카드를 대신함 / 연결 후 → 관계 카드
+  const reqCard = incoming.length ? connReqCardHtml({
+    name: labelFor(incomingProfile),
+    rejectAttr: 'id="rejectIncoming"',
+    acceptAttr: learnerLink ? '' : 'id="acceptIncoming"',
+    note: learnerLink ? '이미 연결된 파트너가 있어서, 먼저 아래에서 기존 연결을 해제해야 수락할 수 있어요.' : ''
+  }) : '';
+  const stepCard = learnerLink ? `<div class="cx-card"><div class="cx-rel"><img class="cx-ico" src="icon_book_sprout.png" alt="">
+      <div class="cx-b"><div class="cx-lab">나의 Re:Step을 받는 사람</div><div class="cx-name">${escapeHtml(labelFor(learnerProfile))}님</div></div>
+      <button class="cx-btn sec" id="disconnectAsLearner">연결 해제</button></div></div>` : '';
+  const cheerCard = partnerLink ? `<div class="cx-card lav"><div class="cx-rel"><img class="cx-ico" src="icon_letter.png" alt="">
+      <div class="cx-b"><div class="cx-lab">나의 Re:Cheer를 받는 사람</div><div class="cx-name">${escapeHtml(labelFor(partnerProfile))}님</div></div>
+      <button class="cx-btn sec" id="disconnectAsPartner">연결 해제</button></div></div>` : '';
+
+  if(incoming.length){
+    html += reqCard;
+  } else if(!learnerLink){
+    html += `<div class="cx-card"><div class="cx-head"><img class="cx-ico" src="icon_link.png" alt="">
+      <div class="cx-b"><div class="cx-h">내 초대코드</div><div class="cx-s">이 코드를 공유하면 나와 응원 파트너로 연결할 수 있어요.</div></div></div>
+      <div class="cx-code"><div class="cx-code-v">${escapeHtml(myProfile?.invite_code||'-')}</div><button class="cx-btn" id="copyInvite">복사하기</button></div></div>`;
+  }
+
+  if(mutual){
+    html += `<div class="cx-mutual"><img class="cx-heart" src="heart_pair.png" alt="">
+      <div class="cx-h" style="font-size:16px">${escapeHtml(labelFor(learnerProfile))}님과 서로 응원하는 사이예요</div></div>
+      <div class="cx-sec">Re:Step</div>${stepCard}<div class="cx-sec">Re:Cheer</div>${cheerCard}`;
+  } else {
+    html += stepCard + cheerCard;
+  }
+
+  showModal(html);
+  $('backToMenu').onclick = openSettingsMenu;
+  if($('copyInvite')) $('copyInvite').onclick = async () => {
+    const code = myProfile?.invite_code || '';
+    let ok = false;
+    try{ await navigator.clipboard.writeText(code); ok = true; }catch(e){
+      try{ const ta=document.createElement('textarea'); ta.value=code; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); ta.remove(); }catch(e2){}
+    }
+    toast(ok ? '초대코드를 복사했어요.' : '복사하지 못했어요. 코드를 직접 선택해 주세요.');
+  };
+  // 수락/거절은 알림함과 같은 cheer_links 요청 한 건을 처리 → 어느 쪽에서 처리해도 다른 쪽엔 다시 열 때 이미 없다.
+  if($('acceptIncoming')) $('acceptIncoming').onclick = async () => {
+    const { error } = await client.rpc('accept_partner_connection', { p_link_id: incoming[0].id });
+    if(error){ toast('❌ '+error.message); return; }
+    toast('연결됐어요 💜'); updateNotifBadge(); updateLearnerConnStatus(); loadCheerSection(); loadReceivedCheers(); openConnectionSettings();
+  };
+  if($('rejectIncoming')) $('rejectIncoming').onclick = async () => {
+    const { error } = await client.from('cheer_links').delete().eq('id', incoming[0].id);
+    if(error){ toast('❌ '+error.message); return; }
+    toast('요청을 거절했어요.'); updateNotifBadge(); loadCheerSection(); openConnectionSettings();
+  };
+  if($('disconnectAsLearner')) $('disconnectAsLearner').onclick = async () => {
+    if(!confirm('나를 응원해주던 연결을 해제할까요?')) return;
+    await client.from('cheer_links').update({ status: 'disconnected' }).eq('id', learnerLink.id);
+    toast('연결을 해제했어요.'); updateLearnerConnStatus(); openConnectionSettings();
+  };
+  if($('disconnectAsPartner')) $('disconnectAsPartner').onclick = async () => {
+    if(!confirm('연결을 해제할까요?')) return;
+    await client.from('cheer_links').update({ status: 'disconnected' }).eq('id', partnerLink.id);
+    toast('연결을 해제했어요.'); loadCheerSection(); openConnectionSettings();
+  };
+}
+
+async function openNotifSettings(){
+  const pushSub = await getCurrentPushSubscription();
+  showModal(`<button class="smallbtn" id="backToMenu">← 뒤로</button>
+    <h3 style="margin-top:10px">알림</h3>
+    <div class="card"><p class="subtle">짝꿍이 Re:Step/Re:Cheer를 보내면 알려드려요.</p>
+    <button class="btn ${pushSub?'secondary':'primary'} full" id="togglePush" style="margin-top:10px">${pushSub?'🔕 알림 끄기':'🔔 알림 켜기'}</button></div>`);
+  $('backToMenu').onclick = openSettingsMenu;
+  $('togglePush').onclick = async () => {
+    if(pushSub){ await disablePush(pushSub); } else { await enablePush(); }
+    openNotifSettings();
+  };
+}
+
+// ===== 이름 온보딩 =====
+$('saveNameBtn').onclick = async () => {
+  const name = $('displayNameInput').value.trim();
+  if(!name){ toast('이름을 입력해주세요.'); return; }
+  const { error } = await client.from('profiles').update({ display_name: name }).eq('id', currentUserId);
+  if(error){ toast('❌ ' + error.message); return; }
+  await proceedToAppOrPushPrompt();
+};
+
+// ===== 첫 로그인 알림 안내 =====
+$('pushPromptAllow').onclick = async () => { await enablePush(); screen('homeScreen'); };
+$('pushPromptLater').onclick = () => { screen('homeScreen'); };
+
+// ===== 실시간 동기화 =====
+function subscribeRealtime(){
+  if(realtimeChannel) return;
+  realtimeChannel = client.channel('restep-changes')
+    .on('postgres_changes', { event:'*', schema:'public', table:'cheer_links' }, () => { loadCheerSection(); updateNotifBadge(); updateLearnerConnStatus(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'cheer_summaries' }, () => { loadCheerSection(); updateNotifBadge(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'cheer_messages' }, () => { loadCheerSection(); loadReceivedCheers(); updateNotifBadge(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'study_pages' }, () => loadPages())
+    .on('postgres_changes', { event:'*', schema:'public', table:'study_sessions' }, (payload) => {
+      const changedPageId = payload.new?.page_id || payload.old?.page_id;
+      const onPageScreen = document.querySelector('.screen.active')?.id === 'pageScreen';
+      if(changedPageId && changedPageId === currentPageId && onPageScreen){
+        const page = pagesCache.find(p=>p.id===currentPageId);
+        const deviceChanged = payload.eventType === 'UPDATE' && payload.old && payload.new && payload.old.active_device_id !== payload.new.active_device_id;
+        const lostToOther = deviceChanged && payload.new.active_device_id !== deviceId;
+        if(page) renderToday(page);
+        if(lostToOther){
+          toast('📱 다른 기기로 편집권이 넘어갔어요');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+    })
+    .subscribe();
+}
+function unsubscribeRealtime(){ if(realtimeChannel){ client.removeChannel(realtimeChannel); realtimeChannel=null; } }
+
+// ===== 로그인 상태 =====
+async function proceedToAppOrPushPrompt(){
+  await probeSummaryCols(); // 자기주도 snapshot 컬럼 유무 확인(있을 때만 select에 포함)
+  loadPages();
+  loadReceivedCheers();
+  loadCheerSection();
+  updateLearnerConnStatus();
+  updateNotifBadge();
+  const askedKey = 'restep-push-asked-' + currentUserId;
+  if(!localStorage.getItem(askedKey)){
+    localStorage.setItem(askedKey, '1');
+    screen('pushPromptScreen');
+  } else {
+    screen('homeScreen');
+  }
+  handleNotificationDeepLink();
+}
+async function render(session){
+  if(session){
+    currentUserId = session.user.id;
+    setRole('learner');
+    subscribeRealtime();
+    const { data: profile } = await client.from('profiles').select('display_name').eq('id', currentUserId).single();
+    if(!profile?.display_name){
+      screen('nameSetupScreen');
+      return;
+    }
+    await proceedToAppOrPushPrompt();
+  } else {
+    currentUserId = null;
+    unsubscribeRealtime();
+    screen('loginScreen');
+  }
+}
+client.auth.onAuthStateChange((_e, session) => render(session));
+client.auth.getSession().then(({data}) => render(data.session));
+</script>
+</body>
+</html>
