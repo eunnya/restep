@@ -2598,9 +2598,13 @@ function wireSdShell(root, key, onChange){
   const tabs = [...root.querySelectorAll('.rs-tabs button, .sa-tabs button')];
   const dots = [...root.querySelectorAll('.rs-dots span')];
   let active = 0, lock = false, lockTimer = null, drag = null;
+  // noswipe(학습자 복습|새 학습): 가로 스크롤 위치에 의존하지 않고 보이는 페이지만 바꾼다.
+  // 모바일(특히 iOS)에서 다시 그린 직후 scrollLeft 복원이 안 먹어 '새 학습' 탭 아래에 복습 카드가 보이던 버그 방지.
+  const noswipe = vp.classList.contains('noswipe');
   const syncHeight = () => { vp.style.height = pages[active].offsetHeight + 'px'; };
   const setActive = i => {
     active = i;
+    if(noswipe){ pages.forEach((pg,k)=>{ pg.style.display = k===i ? '' : 'none'; }); vp.scrollLeft = 0; }
     tabs.forEach((t,k)=>t.classList.toggle('active', k===i));
     dots.forEach((d,k)=>d.classList.toggle('on', k===i));
     syncHeight();
@@ -2608,18 +2612,20 @@ function wireSdShell(root, key, onChange){
   };
   const jump = i => { // 애니메이션 없이 바로 이동(다시 그린 뒤 보던 탭 복원용)
     setActive(i);
+    if(noswipe) return;
     vp.style.scrollSnapType = 'none'; vp.scrollLeft = i * vp.clientWidth;
     requestAnimationFrame(() => { vp.style.scrollSnapType = ''; });
   };
   const goTo = i => {
     setActive(i);
+    if(noswipe) return;
     lock = true; clearTimeout(lockTimer);
     vp.scrollTo({ left: i*vp.clientWidth, behavior: 'smooth' });
     lockTimer = setTimeout(()=>{ lock = false; }, 450);
   };
   tabs.forEach((t,k)=>{ t.onclick = () => goTo(k); });
   vp.addEventListener('scroll', () => {
-    if(lock) return;
+    if(lock || noswipe) return;
     const i = Math.round(vp.scrollLeft / vp.clientWidth);
     if(i !== active && i >= 0 && i < pages.length) setActive(i);
   });
@@ -2627,7 +2633,7 @@ function wireSdShell(root, key, onChange){
   let lastW = 0;
   const onResize = () => { // 높이는 현재 페이지에 맞추고, 화면 폭이 바뀌었거나 숨겨졌다 나타났다면 현재 탭 위치를 다시 맞춤
     syncHeight();
-    if(vp.clientWidth && vp.clientWidth !== lastW){ lastW = vp.clientWidth; if(!lock && !drag) vp.scrollLeft = active * vp.clientWidth; }
+    if(!noswipe && vp.clientWidth && vp.clientWidth !== lastW){ lastW = vp.clientWidth; if(!lock && !drag) vp.scrollLeft = active * vp.clientWidth; }
   };
   if(window.ResizeObserver){ ro = new ResizeObserver(onResize); pages.forEach(pg=>ro.observe(pg)); ro.observe(vp); }
   requestAnimationFrame(syncHeight);
